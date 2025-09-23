@@ -2,6 +2,8 @@ from pathlib import Path
 from datetime import datetime
 from peft import LoraConfig
 from transformers import TrainingArguments
+from models_registry import ModelRegistry
+from copy import deepcopy
 
 DEBUG = True
 
@@ -40,10 +42,10 @@ DEFAULT_TRAINING_ARGS = TrainingArguments( # Automatically set num_train_epochs 
         save_strategy="epoch",
     )
 
-TABULATOR_TRAINING_ARGS = copy(DEFAULT_TRAINING_ARGS)
+TABULATOR_TRAINING_ARGS = deepcopy(DEFAULT_TRAINING_ARGS)
 TABULATOR_TRAINING_ARGS.num_train_epochs = NUM_TABULATOR_TRAIN_EPOCHS
 
-SNIPPET_TRAINING_ARGS = copy(DEFAULT_TRAINING_ARGS)
+SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_TRAINING_ARGS)
 SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_SNIPPET_TRAIN_EPOCHS
 
 REGISTRY = ModelRegistry()

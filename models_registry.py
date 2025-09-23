@@ -1,8 +1,7 @@
-# models_config.py
 from pathlib import Path
 from typing import Dict, Any, Iterable
 from transformers import TrainingArguments
-from deepcopy import deepcopy
+from copy import deepcopy
 
 class ModelRegistry:
     def __init__(self) -> None:
