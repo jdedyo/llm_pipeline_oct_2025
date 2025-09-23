@@ -4,7 +4,7 @@ from SETTINGS import *
 from typing import Tuple
 import torch
 
-def get_llm_and_tokenizer(model_id: str, model_dir: str flash_attn_bool: bool=True) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:    
+def get_llm_and_tokenizer(model_id: str, model_dir: str, flash_attn_bool: bool=True) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:    
     if flash_attn_bool:
         model = AutoModelForCausalLM.from_pretrained(model_id, torch_dtype=torch.bfloat16, cache_dir=model_dir, device_map='auto', attn_implementation="flash_attention_2")
     else:
