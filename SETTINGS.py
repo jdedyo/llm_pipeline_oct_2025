@@ -1,5 +1,4 @@
 from pathlib import Path
-
 from datetime import datetime
 from peft import LoraConfig
 from transformers import TrainingArguments
@@ -19,6 +18,9 @@ SNIPPET_BASE_MODEL_DIR = TABULATOR_BASE_MODEL_DIR
 PARTITION_1_PATH = Path()
 PARTITION_2_PATH = Path()
 
+TABULATOR_ANSWER_COL = ""
+SNIPPET_ANSWER_COL = ""
+
 TABULATOR_PROMPT_PATH = Path()
 SNIPPET_PROMPT_PATH = Path()
 
@@ -26,6 +28,23 @@ NUM_TABULATOR_TRAIN_EPOCHS = 4
 NUM_SNIPPET_TRAIN_EPOCHS = 3
 
 NOW = datetime.now().strftime("_%m_%d_%Y-%I_%p") # suffix for filenames so that we know which are newest
+
+DEFAULT_TRAINING_ARGS = TrainingArguments( # Automatically set num_train_epochs and save_dir based on registry
+        per_device_train_batch_size=4,
+        auto_find_batch_size=True,
+        gradient_accumulation_steps=1,
+        learning_rate=1e-4,
+        bf16=True,
+        logging_steps=2,
+        optim="adamw_torch",
+        save_strategy="epoch",
+    )
+
+TABULATOR_TRAINING_ARGS = copy(DEFAULT_TRAINING_ARGS)
+TABULATOR_TRAINING_ARGS.num_train_epochs = NUM_TABULATOR_TRAIN_EPOCHS
+
+SNIPPET_TRAINING_ARGS = copy(DEFAULT_TRAINING_ARGS)
+SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_SNIPPET_TRAIN_EPOCHS
 
 REGISTRY = ModelRegistry()
 REGISTRY.add(
@@ -37,6 +56,8 @@ REGISTRY.add(
     train_data_path=PARTITION_1_PATH,
     prompt_path=TABULATOR_PROMPT_PATH,
     train_epochs=NUM_TABULATOR_TRAIN_EPOCHS,
+    train_ans_col=TABULATOR_ANSWER_COL,
+    training_args=DEFAULT_TRAINING_ARGS,
 )
 REGISTRY.add(
     "f2",
@@ -47,6 +68,8 @@ REGISTRY.add(
     train_data_path=PARTITION_2_PATH,
     prompt_path=TABULATOR_PROMPT_PATH,
     train_epochs=NUM_TABULATOR_TRAIN_EPOCHS,
+    train_ans_col=TABULATOR_ANSWER_COL,
+    training_args=DEFAULT_TRAINING_ARGS,
 )
 REGISTRY.add(
     "g1",
@@ -57,6 +80,8 @@ REGISTRY.add(
     train_data_path=PARTITION_1_PATH,
     prompt_path=SNIPPET_PROMPT_PATH,
     train_epochs=NUM_SNIPPET_TRAIN_EPOCHS,
+    train_ans_col=SNIPPET_ANSWER_COL,
+    training_args=DEFAULT_TRAINING_ARGS,
 )
 REGISTRY.add(
     "g2",
@@ -67,6 +92,8 @@ REGISTRY.add(
     train_data_path=PARTITION_2_PATH,
     prompt_path=SNIPPET_PROMPT_PATH,
     train_epochs=NUM_SNIPPET_TRAIN_EPOCHS,
+    train_ans_col=SNIPPET_ANSWER_COL,
+    training_args=DEFAULT_TRAINING_ARGS,
 )
 
 # optional debug suffix
@@ -82,23 +109,8 @@ TRAIN_CONFIG = LoraConfig(
     target_modules = ['k_proj', 'q_proj', 'v_proj', 'o_proj', "gate_proj"]
 )
 
-TRAINING_ARGS = TrainingArguments(
-        per_device_train_batch_size=4,
-        auto_find_batch_size=True,
-        gradient_accumulation_steps=1,
-        # num_train_epochs=NUMEPOCHS,
-        learning_rate=1e-4,
-        bf16=True,
-        logging_steps=2,
-        optim="adamw_torch",
-        save_strategy="epoch",
-        # output_dir=save_dir+"/checkpoints"
-    )
-
 CUTOFF_LEN = 8000  #Our dataset has long text
 
 NUM_TRAIN_PARTITIONS = 2
 
-TABULATOR_ANSWER_COL = ""
-SNIPPET_ANSWER_COL = ""
 PLAN_TEXT_COL = "ocr_text"

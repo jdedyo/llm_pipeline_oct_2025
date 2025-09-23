@@ -1,13 +1,19 @@
 # models_config.py
 from pathlib import Path
 from typing import Dict, Any, Iterable
+from transformers import TrainingArguments
+from deepcopy import deepcopy
 
 class ModelRegistry:
     def __init__(self) -> None:
         self._data: Dict[str, Dict[str, Any]] = {}
 
     def add(self, name: str, *, type: str, model_id: str,
-            save_path: Path, base_model_path: Path, train_data_path: Path, prompt_path: Path, train_epochs: int) -> None:
+            save_path: Path, base_model_path: Path, 
+            train_data_path: Path, prompt_path: Path, 
+            train_epochs: int, train_ans_col: str,
+            training_args: TrainingArguments) -> None:
+            
         self._data[name] = {
             "name": name,
             "type": type,
@@ -17,6 +23,8 @@ class ModelRegistry:
             "train_data_path": train_data_path,
             "prompt_path": prompt_path,
             "train_epochs": train_epochs,
+            "train_ans_col": train_ans_col,
+            "training_args": deepcopy(training_args)
         }
 
     def choices(self) -> Iterable[str]:

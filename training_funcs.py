@@ -1,7 +1,7 @@
 import pandas as pd
 from datasets import load_dataset, Dataset
 from SETTINGS import *
-from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer
+from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 from llm_helpers import *
 from tqdm import tqdm
 
@@ -26,11 +26,12 @@ def print_trainable_parameters(m: AutoModelForCausualLM) -> None:
 
 
 def prep_training_data(train_data_path: Union[str, Path], 
-                       prompt_path: Union[str, Path], 
-                       chat_template_bool: bool=False,
-                       include_ans_bool: bool=False,
-                       ans_col: str="",
-                       ocr_col: str="content") -> Dataset:
+                       prompt_path: Union[str, Path],
+                       ans_col: str,
+                       ocr_col: str=PLAN_TEXT_COL,
+                       chat_template_bool: bool=True,
+                       include_ans_bool: bool=True) -> Dataset:
+    
     train_data_path = Path(train_data_path)
     prompt_path = Path(prompt_path)
 
@@ -75,9 +76,10 @@ def prep_training_data(train_data_path: Union[str, Path],
 
     return train_ds
 
-def get_trainer(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, train_data: Dataset) -> Trainer:
-    
-    training_args = TRAINING_ARGS
+def get_trainer(model: AutoModelForCausalLM, 
+                tokenizer: AutoTokenizer, 
+                training_args: TrainingArguments, 
+                train_data: Dataset) -> Trainer:
     
     trainer = Trainer(
     model=model,
@@ -87,5 +89,3 @@ def get_trainer(model: AutoModelForCausalLM, tokenizer: AutoTokenizer, train_dat
     )
 
     return trainer
-
-def get_base_model()
