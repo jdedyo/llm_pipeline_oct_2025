@@ -17,8 +17,8 @@ parser.add_argument(
     "--model",
     type=str,
     required=True,
-    choices=registry.choices(),
-    help=f"Name of the model to use. Must be one of: {', '.join(registry.choices())}."
+    choices=REGISTRY.choices(),
+    help=f"Name of the model to use. Must be one of: {', '.join(REGISTRY.choices())}."
 )
 
 args = parser.parse_args()
@@ -38,9 +38,11 @@ model = get_peft_model(model, TRAIN_CONFIG)
 
 print_trainable_parameters(model)
 
-train_data = prep_training_data(train_data_path = cfg['train_data_path'], 
-                                prompt_path = cfg['prompt_path'],
-                                ans_col = cfg['train_ans_col'])
+# train_data = prep_training_data(train_data_path = cfg['train_data_path'], 
+                                # prompt_path = cfg['prompt_path'],
+                                # ans_col = cfg['train_ans_col'])
+
+train_data = generate_train_prompts(cfg, tokenizer)
 
 print("dataset", train_data)
 
@@ -58,6 +60,7 @@ trainer.train()
 training_log = trainer.state.log_history
 
 trainer.save_model(cfg['save_path'])
+tokenizer.save_pretrained(cfg['save_path'])
 
 log_hist = pd.DataFrame(trainer.state.log_history)
 log_hist.to_csv(cfg['save_path'] / 'log_file', encoding='utf-8', index=False)

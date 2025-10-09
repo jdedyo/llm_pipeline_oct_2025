@@ -1,9 +1,14 @@
 import pandas as pd
 from datasets import load_dataset, Dataset
 from SETTINGS import *
-from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
+from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments, DataCollatorForLanguageModeling
 from llm_helpers import *
 from tqdm import tqdm
+from rag_funcs import *
+from typing import Union
+from utils import *
+import torch
+
 
 # Define this function for use in creating the prompts
 def chat_template(prompt: str, tokenizer: AutoTokenizer, answer: str='') -> str:
@@ -19,7 +24,7 @@ def chat_template(prompt: str, tokenizer: AutoTokenizer, answer: str='') -> str:
     chat = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=False)
     return chat
 
-def print_trainable_parameters(m: AutoModelForCausualLM) -> None:
+def print_trainable_parameters(m: AutoModelForCausalLM) -> None:
     trainable_params = sum(p.numel() for p in m.parameters() if p.requires_grad)
     all_params = sum(p.numel() for p in m.parameters())
     print(f"trainable params: {trainable_params} || all params: {all_params} || trainable%: {100 * trainable_params / all_params}")
@@ -85,7 +90,82 @@ def get_trainer(model: AutoModelForCausalLM,
     model=model,
     train_dataset=train_data,
     args=training_args,
-    data_collator=transformers.DataCollatorForLanguageModeling(tokenizer, mlm=False)
+    data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False)
     )
 
     return trainer
+
+def generate_train_prompts(cfg: ModelRegistry, tokenizer: AutoTokenizer):
+    
+    prompt_path = Path(cfg['prompt_path'])
+    data = load_data(cfg['train_data_path'])
+
+    if cfg['train_rag_data_path'] is not None:
+        rag_data = load_data(cfg['train_rag_data_path'])
+    else:
+        rag_data = None
+
+    plans = data[PLAN_TEXT_COL]
+    years = data['year']
+    ans   = data[cfg['train_ans_col']]
+
+    n_plans = len(plans)
+
+    if rag_data is not None and len(rag_data) != n_plans:
+        raise ValueError(
+            f"Length mismatch: rag_data({len(rag_data)}) must match data({n_plans})."
+        )
+
+    cleanprompt = prompt_path.read_text(encoding="utf-8")
+
+    prompts = pd.Series(
+        [
+            chat_template(cleanprompt.replace("[YYYY]", str(y)).replace("[PLAN]", str(p)), tokenizer, a)
+            for p, y, a in zip(plans, years, ans)
+        ],
+        index=data.index,
+    )
+
+    if rag_data is not None:
+        
+        rag_model = load_rag_model()
+        rag_plan_ids = rag_data[PARTITION_COL].tolist()
+        rag_snips = rag_data[cfg["train_rag_data_col"]]
+        rag_tables = rag_data[cfg["train_ans_col"]]
+        rag_years = rag_data["year"]
+        
+        corpus_data = prep_plan_data_for_rag(rag_model, 
+                                rag_plan_ids, 
+                                rag_snips,
+                                rag_tables, 
+                                rag_years)
+        
+        for p in prompts:
+            query_data = make_query(str(snippet), query_docs[i], query_plan_ids[i], query_years[i])
+        
+        del rag_model
+        torch.cuda.empty_cache()
+        # TODO: COMPLETE RAG PART
+
+    processed_prompts = prompts.tolist()
+    
+    n = len(processed_prompts)
+    print(f"Training on {n} examples.")
+    if n:
+        print(f"Example prompt:\n{processed_prompts[-1]}")
+
+    raw = Dataset.from_dict({"messages": processed_prompts})
+
+    def tokenize(prompt):
+        x=tokenizer(
+            prompt,# + tokenizer.eos_token,
+            truncation=True,
+            return_special_tokens_mask=True,
+            max_length=CUTOFF_LEN,
+            # padding=True
+        )
+        return x
+
+    train_ds = raw.map(lambda row: tokenize(row["messages"]), remove_columns=["messages"])
+
+    return train_ds
