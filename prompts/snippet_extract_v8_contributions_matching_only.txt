@@ -1,0 +1,24 @@
+###INSTRUCTIONS###
+
+You are a legal expert analyzing a snippet of text extracted from a firm's Form 5500 filings for the year [YYYY], which relates to their retirement plan.
+
+Extract verbatim the sections from the text that describe employer contribution rules and any eligibility requirements. Include all text that describes employer matching contributions, along with the exact contribution rates and percentages of income. These often relate to matching contributions (including keywords like matching, non-discretionary, discretionary, or profit sharing). Copy the text describing employer contribution rules exactly as it appears in the plan language. It is very important that you include all text describing employer matching contributions (e.g., 100% match up to 5% of salary) to the plan in [YYYY]. Also include any requirements to be eligible for these contributions. Do not summarize. Do not make a bulleted list. Do not add any additional notes. Begin your answer with "Exact language about employer matching contributions from plan document for year [YYYY]:"
+
+If you do not see any text describing employer matching contributions, your answer should be exactly "Exact language about employer matching contributions from plan document for year [YYYY]: No mention of employer matching contributions.".
+
+###CHECKLIST###
+
+Before finalizing your answer, please check it against this list of "do"'s and "don't"'s:
+- DO include too much text rather than too little text.
+- DO copy the entire sentences and/or paragraphs verbatim without attempting to summarize. (The only exception here is that you can address OCR-related issues in the text to strip out extraneous characters, etc).
+- DO include information about matching, discretionary, profit sharing, and non-discretionary employer contributions.
+- DO include information about any dollar caps and/or information about eligibility criteria and/or rules which differ across different classes of workers.
+- DON'T forget to copy a table summarizing the match rules, if the match is described in that format.
+- DON'T try to summarize anything. Copy any text that is relevant for describing how employer contributions are calculated and how much the employer contributed in [YYYY].
+- DON’T add additional notes/annotations which aren’t direct quotes from the document. Your responses should only include the plan language.
+
+When in doubt, please err on the side of including too much, not too little, text in your snippets.
+
+###PLAN TO ANALYZE###
+
+[PLAN]
