@@ -48,7 +48,7 @@ print("dataset", train_data)
 
 training_args = cfg['training_args']
 training_args.num_train_epochs = cfg['train_epochs']
-training_args.save_dir = cfg['save_path'] / 'checkpoints'
+training_args.output_dir = cfg['save_path'] / 'checkpoints'
 
 trainer = get_trainer(model=model, 
                       tokenizer=tokenizer,

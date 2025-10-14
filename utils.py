@@ -241,8 +241,15 @@ def load_ocr_data(path: Path=ALL_OCR_TEXT_DATA_PATH) -> pd.DataFrame:
     return df
 
 def parse_timestamp(path: Path, prefix: str) -> datetime | None:
-    timestamp_str = path.name.removeprefix(prefix+"_")
-    return datetime.strptime(timestamp_str, "%m_%d_%Y-%I_%p")
+    name_no_ext = path.stem
+    if not name_no_ext.startswith(prefix + "_"):
+        return None
+
+    timestamp_str = name_no_ext.removeprefix(prefix + "_")
+    try:
+        return datetime.strptime(timestamp_str, "%m_%d_%Y-%I_%p")
+    except ValueError:
+        return None
 
 def remove_timestamp(path: Path) -> Path:
     """
@@ -261,3 +268,33 @@ def remove_timestamp(path: Path) -> Path:
     # Regex to match suffix like "_10_08_2025-09_PM"
     new_name = re.sub(r"_\d{2}_\d{2}_\d{4}-\d{2}_(AM|PM)$", "", name)
     return path.with_name(new_name + path.suffix)
+
+def get_most_recent_file(p: Path):
+    loc = remove_timestamp(p)
+    base_name = loc.stem
+    parent = loc.parent
+
+    # Collect candidates that start with base_name + '_'
+    candidates = list(parent.glob(base_name + "_*"))
+
+    if not candidates:
+        raise FileNotFoundError(
+            f"No timestamped copies matching '{base_name}_*' in {parent}"
+        )
+
+    # Debug print without exhausting an iterator later
+    # print([str(p) for p in candidates])
+
+    # Keep only those whose names parse to a timestamp
+    parsed = [(p, parse_timestamp(p, base_name)) for p in candidates]
+    parsed = [(p, dt) for p, dt in parsed if dt is not None]
+
+    if not parsed:
+        raise FileNotFoundError(
+            f"Found {len(candidates)} candidates, but none matched the timestamp pattern "
+            f"'{base_name}_MM_DD_YYYY-HH_AM/PM'."
+        )
+
+    # Pick the latest by timestamp
+    most_recent = max(parsed, key=lambda x: x[1])[0]
+    return most_recent

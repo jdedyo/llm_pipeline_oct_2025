@@ -30,6 +30,8 @@ ALL_TRAIN_DATA = TRAIN_DATA / "sample_7500_v22Mar24.dta"
 PARTITION_1_PATH = TRAIN_DATA / "partition_1.csv"
 PARTITION_2_PATH = TRAIN_DATA / "partition_2.csv"
 
+SMALL_SAMPLE_PATH = TRAIN_DATA / "small_sample.csv"
+
 PARTITION_COL = "plan_id"
 
 MATCH_RATE_1_COL = "match_rate_1"
@@ -85,6 +87,9 @@ REGISTRY.add(
     save_path=MODELS_LOC / "f1",
     base_model_path=TABULATOR_BASE_MODEL_DIR,
     train_data_path=PARTITION_1_PATH,
+    train_rag_corpus_data_path=PARTITION_1_PATH,
+    train_rag_corpus_data_col="g2_snippet",
+    train_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
     prompt_path=TABULATOR_PROMPT_PATH,
     test_data_path=PARTITION_2_PATH,
     test_data_save_path=PARTITION_2_PATH,
@@ -92,9 +97,10 @@ REGISTRY.add(
     train_ans_col=TABULATOR_ANSWER_COL,
     training_args=DEFAULT_TRAINING_ARGS,
     result_col="f1_table",
-    train_rag_data_path=PARTITION_1_PATH,
+    # train_rag_data_path=PARTITION_1_PATH,
     train_rag_data_col="g2_snippet",
     oos_rag_data_col="g1_snippet",
+    oos_rag_data_path=PARTITION_2_PATH
 )
 REGISTRY.add(
     "f2",
@@ -113,6 +119,7 @@ REGISTRY.add(
     train_rag_data_path=PARTITION_2_PATH,
     train_rag_data_col="g1_snippet",
     oos_rag_data_col="g2_snippet",
+    oos_rag_data_path=PARTITION_1_PATH
 )
 REGISTRY.add(
     "g1",
@@ -142,8 +149,46 @@ REGISTRY.add(
     train_epochs=NUM_SNIPPET_TRAIN_EPOCHS,
     train_ans_col=SNIPPET_ANSWER_COL,
     training_args=DEFAULT_TRAINING_ARGS,
-    result_col="g1_snippet",
+    result_col="g2_snippet",
 )
+REGISTRY.add( # TODO: remove when done debugging RAG stuff
+    "small_snippet_extractor",
+    type="SNIPPET",
+    model_id=SNIPPET_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "g2",
+    base_model_path=SNIPPET_BASE_MODEL_DIR,
+    train_data_path=PARTITION_2_PATH,
+    prompt_path=SNIPPET_PROMPT_PATH,
+    test_data_path=SMALL_SAMPLE_PATH,
+    test_data_save_path=SMALL_SAMPLE_PATH,
+    train_epochs=NUM_SNIPPET_TRAIN_EPOCHS,
+    train_ans_col=SNIPPET_ANSWER_COL,
+    training_args=DEFAULT_TRAINING_ARGS,
+    result_col="g2_snippet",
+)
+REGISTRY.add( # TODO: remove after debugging rag
+    "small_tabulator",
+    type="TABULATOR",
+    model_id=TABULATOR_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "f1",
+    base_model_path=TABULATOR_BASE_MODEL_DIR,
+    train_data_path=SMALL_SAMPLE_PATH,
+    train_rag_corpus_data_path=SMALL_SAMPLE_PATH,
+    train_rag_corpus_data_col="g2_snippet",
+    train_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
+    prompt_path=TABULATOR_PROMPT_PATH,
+    test_data_path=PARTITION_2_PATH,
+    test_data_save_path=PARTITION_2_PATH,
+    train_epochs=NUM_TABULATOR_TRAIN_EPOCHS,
+    train_ans_col=TABULATOR_ANSWER_COL,
+    training_args=DEFAULT_TRAINING_ARGS,
+    result_col="f1_table",
+    # train_rag_data_path=PARTITION_1_PATH,
+    train_rag_data_col="g2_snippet",
+    oos_rag_data_col="g1_snippet",
+    oos_rag_data_path=PARTITION_2_PATH
+)
+
 
 # optional debug suffix
 if DEBUG:

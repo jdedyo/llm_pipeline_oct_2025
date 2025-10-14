@@ -94,14 +94,21 @@ def get_trainer(model: AutoModelForCausalLM,
     )
 
     return trainer
-
+#generate_train_prompts(cfg, tokenizer)
 def generate_train_prompts(cfg: ModelRegistry, tokenizer: AutoTokenizer):
     
     prompt_path = Path(cfg['prompt_path'])
-    data = load_data(cfg['train_data_path'])
 
-    if cfg['train_rag_data_path'] is not None:
-        rag_data = load_data(cfg['train_rag_data_path'])
+    if DEBUG:
+        data = load_data(get_most_recent_file(cfg['train_data_path']))
+    else:
+        data = load_data(cfg['train_data_path'])
+
+    if cfg['train_rag_corpus_data_path'] is not None:
+        if DEBUG:
+            rag_data = load_data(get_most_recent_file(cfg['train_rag_corpus_data_path']))
+        else:
+            rag_data = load_data(cfg['train_rag_corpus_data_path'])
     else:
         rag_data = None
 
@@ -109,12 +116,12 @@ def generate_train_prompts(cfg: ModelRegistry, tokenizer: AutoTokenizer):
     years = data['year']
     ans   = data[cfg['train_ans_col']]
 
-    n_plans = len(plans)
+    # n_plans = len(plans)
 
-    if rag_data is not None and len(rag_data) != n_plans:
-        raise ValueError(
-            f"Length mismatch: rag_data({len(rag_data)}) must match data({n_plans})."
-        )
+    # # if rag_data is not None and len(rag_data) != n_plans:
+    # #     raise ValueError(
+    # #         f"Length mismatch: rag_data({len(rag_data)}) must match data({n_plans})."
+    # #     )
 
     cleanprompt = prompt_path.read_text(encoding="utf-8")
 
@@ -127,27 +134,46 @@ def generate_train_prompts(cfg: ModelRegistry, tokenizer: AutoTokenizer):
     )
 
     if rag_data is not None:
-        
+        print("Loading rag model")
         rag_model = load_rag_model()
         rag_plan_ids = rag_data[PARTITION_COL].tolist()
-        rag_snips = rag_data[cfg["train_rag_data_col"]]
-        rag_tables = rag_data[cfg["train_ans_col"]]
+        rag_snips = rag_data[cfg["train_rag_corpus_data_col"]]
+        rag_tables = rag_data[cfg["train_rag_corpus_ans_col"]]
         rag_years = rag_data["year"]
         
+        print("Prepping plan data for rag")
         corpus_data = prep_plan_data_for_rag(rag_model, 
                                 rag_plan_ids, 
                                 rag_snips,
                                 rag_tables, 
                                 rag_years)
         
-        for p in prompts:
-            query_data = make_query(str(snippet), query_docs[i], query_plan_ids[i], query_years[i])
+
+        query_plan_ids = data[PARTITION_COL].tolist()
+        query_years    = years.tolist()
+        query_snippets = data[cfg["train_rag_data_col"]].astype(str).tolist()
+        
+        rag_prompts = []
+        for i, p in tqdm(
+                    enumerate(prompts),
+                    total=len(prompts),
+                    desc="Generating RAG-augmented prompts",
+                    dynamic_ncols=True
+                ):
+                
+            query_data = make_query(query_snippets[i], query_plan_ids[i], query_years[i])
+            match_snips, match_tables, match_years, match_plan_ids = rag_generator(rag_model, query_data, corpus_data)
+            rag_prompts.append(add_rag_examples(p, match_snips, match_tables, match_years))
         
         del rag_model
         torch.cuda.empty_cache()
-        # TODO: COMPLETE RAG PART
 
-    processed_prompts = prompts.tolist()
+        prompts = rag_prompts
+        # TODO: COMPLETE RAG PART
+        with open("debug_train_prompts.txt", "w", encoding="utf-8") as f:
+            f.write("\n\n+++++++++++++++++++++\n\n".join(str(p) for p in prompts[:100]))
+
+    processed_prompts = list(prompts)
     
     n = len(processed_prompts)
     print(f"Training on {n} examples.")

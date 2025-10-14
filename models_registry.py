@@ -9,16 +9,21 @@ class ModelRegistry:
 
     def add(self, name: str, *, type: str, model_id: str,
             save_path: Path, base_model_path: Path, 
-            train_data_path: Path, prompt_path: Path, 
+            train_data_path: Path,
+            prompt_path: Path, 
             test_data_path: Path, test_data_save_path: Path,
             train_epochs: int, 
             train_ans_col: str,
             training_args: TrainingArguments,
             result_col: str,
             train_rag_data_path: Path=None,
-            oos_rag_data_path: Path=None,
             train_rag_data_col: str=None,
-            oos_rag_data_col: str=None) -> None:
+            train_rag_corpus_data_path: Path=None,
+            train_rag_corpus_data_col: str=None,
+            train_rag_corpus_ans_col: str=None,
+            test_rag_corpus_data_path: Path=None, test_rag_corpus_data_col: str=None,
+            oos_rag_data_col: str=None,
+            oos_rag_data_path: Path=None) -> None:
             
         self._data[name] = {
             "name": name,
@@ -30,14 +35,19 @@ class ModelRegistry:
             "prompt_path": prompt_path,
             "test_data_path": test_data_path,
             "test_data_save_path": test_data_save_path,
+            "test_rag_corpus_data_path": test_rag_corpus_data_path,
+            "test_rag_corpus_data_col": test_rag_corpus_data_col,
+            "train_rag_corpus_ans_col": train_rag_corpus_ans_col,
             "train_epochs": train_epochs,
             "train_ans_col": train_ans_col,
             "training_args": deepcopy(training_args),
             "result_col": result_col,
             "train_rag_data_path": train_rag_data_path,
-            "oos_rag_data_path": oos_rag_data_path,
             "train_rag_data_col": train_rag_data_col,
             "oos_rag_data_col": oos_rag_data_col,
+            "oos_rag_data_path": oos_rag_data_path,
+            "train_rag_corpus_data_path": train_rag_corpus_data_path,
+            "train_rag_corpus_data_col": train_rag_corpus_data_col,
         }
 
     def choices(self) -> Iterable[str]:

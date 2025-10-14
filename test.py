@@ -45,6 +45,6 @@ if __name__ == "__main__":
     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, temperature=0.01, max_new_tokens=1000)
     llm_output = run_batched_inference(test_prompts, pipe)
 
-    all_test_data = load_data(cfg['train_data_path'])
+    all_test_data = load_data(cfg['test_data_path'])
 
     save_test_results(all_test_data, llm_output, cfg)
