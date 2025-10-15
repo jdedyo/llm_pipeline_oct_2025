@@ -329,6 +329,9 @@ def save_oos_chunk_results(chunk_num: int, results: List[str], cfg: ModelRegistr
 
     df[col] = results
 
+    p = Path(cfg['oos_results_dir'])
+    p.mkdir(parents=True, exist_ok=True)
+
     save_data(df, cfg['oos_results_dir'] / f"oos_chunk_{chunk_num}.csv")
 
     return df
