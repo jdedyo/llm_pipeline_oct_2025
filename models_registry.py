@@ -21,7 +21,9 @@ class ModelRegistry:
             train_rag_corpus_data_path: Path=None,
             train_rag_corpus_data_col: str=None,
             train_rag_corpus_ans_col: str=None,
-            test_rag_corpus_data_path: Path=None, test_rag_corpus_data_col: str=None,
+            test_rag_corpus_data_path: Path=None, 
+            test_rag_corpus_data_col: str=None,
+            test_rag_corpus_ans_col: str=None,
             oos_rag_data_col: str=None,
             oos_rag_data_path: Path=None) -> None:
             
@@ -37,6 +39,7 @@ class ModelRegistry:
             "test_data_save_path": test_data_save_path,
             "test_rag_corpus_data_path": test_rag_corpus_data_path,
             "test_rag_corpus_data_col": test_rag_corpus_data_col,
+            "test_rag_corpus_ans_col": test_rag_corpus_ans_col,
             "train_rag_corpus_ans_col": train_rag_corpus_ans_col,
             "train_epochs": train_epochs,
             "train_ans_col": train_ans_col,

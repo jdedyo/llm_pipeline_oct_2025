@@ -38,11 +38,11 @@ def generate_test_prompts(cfg: ModelRegistry, tokenizer: AutoTokenizer):
     else:
         data = load_data(cfg['test_data_path'])
 
-    if cfg['test_rag_data_corpus_path'] is not None:
+    if cfg['test_rag_corpus_data_path'] is not None:
         if DEBUG:
-            rag_data = load_data(get_most_recent_file(cfg['test_rag_data_corpus_path']))
+            rag_data = load_data(get_most_recent_file(cfg['test_rag_corpus_data_path']))
         else:
-            rag_data = load_data(cfg['test_rag_data_corpus_path'])
+            rag_data = load_data(cfg['test_rag_corpus_data_path'])
     else:
         rag_data = None
 

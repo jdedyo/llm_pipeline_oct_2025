@@ -163,7 +163,13 @@ def generate_train_prompts(cfg: ModelRegistry, tokenizer: AutoTokenizer):
                 
             query_data = make_query(query_snippets[i], query_plan_ids[i], query_years[i])
             match_snips, match_tables, match_years, match_plan_ids = rag_generator(rag_model, query_data, corpus_data)
-            rag_prompts.append(add_rag_examples(p, match_snips, match_tables, match_years))
+            try:
+                rag_prompts.append(add_rag_examples(p, match_snips, match_tables, match_years))
+            except:
+                print(len(match_snips), match_snips)
+                print(len(match_tables), match_tables)
+                print(len(match_years), match_years)
+                print(len(match_plan_ids), match_plan_ids)
         
         del rag_model
         torch.cuda.empty_cache()

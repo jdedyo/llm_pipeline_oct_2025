@@ -81,7 +81,7 @@ def rag_generator(model, query_data, plans_data):
     query_emb = model.encode(query_snippet, convert_to_tensor=True)
 
     # Retrieve
-    hits = util.semantic_search(query_emb, corpus_emb, top_k=50)[0]
+    hits = util.semantic_search(query_emb, corpus_emb, top_k=100)[0]
 
     all_hit_snippets = []
     all_hit_tables   = []
@@ -96,12 +96,12 @@ def rag_generator(model, query_data, plans_data):
         yr  = all_years[i]
 
         # Skip the exact same doc; avoid dup plan/year combos
-        if pid == query_plan_id and yr == query_year:
+        if pid == query_plan_id:# and yr == query_year:
             continue
-        if (pid, yr) in seen:
+        if pid in seen:#(pid, yr) in seen:
             continue
 
-        seen.add((pid, yr))
+        seen.add(pid)#seen.add((pid, yr))
 
         # <-- use i directly (not all_hit_indices[i]) -->
         all_hit_snippets.append(str(all_plans[i]))
@@ -109,7 +109,7 @@ def rag_generator(model, query_data, plans_data):
         all_hit_years.append(yr)
         all_hit_plan_ids.append(pid)
 
-        if len(all_hit_snippets) >= 20:
+        if len(all_hit_snippets) > NUM_RAG_EXAMPLES+1:
             break
 
     # Cap to NUM_RAG_EXAMPLES (from SETTINGS)

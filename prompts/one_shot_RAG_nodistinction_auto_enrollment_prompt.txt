@@ -59,6 +59,5 @@ Correct output:
 ### DOCUMENT TO CODE ###
  
 <<<Input language for the year [YYYY]:
-
-[DOCUMENT]
+[PLAN]
 >>> 
