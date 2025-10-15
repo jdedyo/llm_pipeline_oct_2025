@@ -1,4 +1,5 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModelForCausalLM
 from datasets import Dataset
 import warnings
 from SETTINGS import *
@@ -7,6 +8,9 @@ import torch
 from utils import *
 from rag_funcs import *
 from tqdm import tqdm
+import numpy as np
+import time
+import sys
 
 def get_llm_and_tokenizer(model_id: str, model_dir: str, flash_attn_bool: bool=True) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:    
     if flash_attn_bool:
@@ -69,41 +73,52 @@ def generate_prompts(prompt_path: Path,
                     data_year_col_name: str='year',
                     train_bool: bool=False) -> Dataset:
     
-    # prompt_path = Path(cfg['prompt_path'])
+    # if oos_bool and train_bool:
+    #     raise AssertionError(f"Cannot have oos_bool={oos_bool} and train_bool={train_bool}. At least one must be false.")
 
     if DEBUG:
-        data = load_data(get_most_recent_file(data_path))
+        newest_data = get_most_recent_file(data_path)
     else:
-        data = load_data(data_path)
+        newest_data = data_path
+    
+    print(f"Using {newest_data}...")
+
+    data = load_data(newest_data)
 
     if rag_corpus_data_path is not None:
         if DEBUG:
-            rag_data = load_data(get_most_recent_file(rag_corpus_data_path))
+            newest_rag_data = get_most_recent_file(rag_corpus_data_path)
         else:
-            rag_data = load_data(rag_corpus_data_path)
+            newest_rag_data = rag_corpus_data_path
+
+        print(f"Using {newest_rag_data} for RAG examples...")    
+        rag_data = load_data(newest_rag_data)
     else:
+        print("Not using RAG...")
         rag_data = None
 
     plans = data[PLAN_TEXT_COL]
     years = data[data_year_col_name]
-    ans   = data[correct_ans_col_name]
-
-    # n_plans = len(plans)
-
-    # # if rag_data is not None and len(rag_data) != n_plans:
-    # #     raise ValueError(
-    # #         f"Length mismatch: rag_data({len(rag_data)}) must match data({n_plans})."
-    # #     )
 
     cleanprompt = prompt_path.read_text(encoding="utf-8")
 
-    prompts = pd.Series(
-        [
-            chat_template(cleanprompt.replace("[YYYY]", str(y)).replace("[PLAN]", str(p)), tokenizer, a, train_bool)
-            for p, y, a in zip(plans, years, ans)
-        ],
-        index=data.index,
-    )
+    if train_bool:
+        ans = data[correct_ans_col_name]
+        prompts = pd.Series(
+            [
+                chat_template(cleanprompt.replace("[YYYY]", str(y)).replace("[PLAN]", str(p)), tokenizer, a, train_bool)
+                for p, y, a in zip(plans, years, ans)
+            ],
+            index=data.index,
+        )
+    else:
+        prompts = pd.Series(
+            [
+                chat_template(cleanprompt.replace("[YYYY]", str(y)).replace("[PLAN]", str(p)), tokenizer)
+                for p, y in zip(plans, years)
+            ],
+            index=data.index,
+        )
 
     if rag_data is not None:
         print("Loading rag model")
@@ -121,7 +136,12 @@ def generate_prompts(prompt_path: Path,
                                 rag_years)
         
 
-        query_plan_ids = data[PARTITION_COL].tolist()
+        if PARTITION_COL in data.columns:
+            query_plan_ids = data[PARTITION_COL].tolist()
+        else:
+            warnings.warn(f"Column '{PARTITION_COL}' not found in data; filling with NaN for RAG filtering.", stacklevel=1)
+            query_plan_ids = [np.nan] * len(data)
+
         query_years    = years.tolist()
         query_snippets = data[data_col_name_for_rag].astype(str).tolist()
         
@@ -155,16 +175,6 @@ def generate_prompts(prompt_path: Path,
     if train_bool:
         raw = Dataset.from_dict({"messages": processed_prompts})
 
-        # def tokenize(prompt):
-        #     x=tokenizer(
-        #         prompt,# + tokenizer.eos_token,
-        #         truncation=True,
-        #         return_special_tokens_mask=True,
-        #         max_length=CUTOFF_LEN,
-        #         # padding=True
-        #     )
-        #     return x
-
         train_ds = raw.map(lambda row: tokenize(tokenizer, row["messages"]), remove_columns=["messages"])
         
         return train_ds
@@ -174,3 +184,74 @@ def generate_prompts(prompt_path: Path,
     prompts_ds = Dataset.from_list(res)
 
     return prompts_ds
+
+def get_most_recent_model_and_tokenizer(cfg: ModelRegistry):
+    """
+    If DEBUG=True, look for the most recent timestamped variant of cfg['save_path'].
+    Otherwise, just return cfg['save_path'].
+    """
+    loc = Path(cfg["save_path"])
+    if DEBUG:
+        # remove_timestamp should strip suffix like '_MM_DD_YYYY-HH_AM/PM'
+        loc = remove_timestamp(loc)
+
+    base_name = loc.name
+    parent = loc.parent
+
+    # Collect candidates that start with base_name + '_'
+    candidates = list(parent.glob(base_name + "_*"))
+
+    if not candidates:
+        raise FileNotFoundError(
+            f"No timestamped copies matching '{base_name}_*' in {parent}"
+        )
+
+    # Debug print without exhausting an iterator later
+    # print([str(p) for p in candidates])
+
+    # Keep only those whose names parse to a timestamp
+    parsed = [(p, parse_timestamp(p, base_name)) for p in candidates]
+    parsed = [(p, dt) for p, dt in parsed if dt is not None]
+
+    if not parsed:
+        raise FileNotFoundError(
+            f"Found {len(candidates)} candidates, but none matched the timestamp pattern "
+            f"'{base_name}_MM_DD_YYYY-HH_AM/PM'."
+        )
+
+    # Pick the latest by timestamp
+    most_recent = max(parsed, key=lambda x: x[1])[0]
+
+    model, tokenizer = get_llm_and_tokenizer(cfg['model_id'], cfg['base_model_path'])
+
+    model = PeftModelForCausalLM.from_pretrained(model, most_recent)
+    model = model.merge_and_unload()
+
+    return model, tokenizer
+
+def run_batched_inference(dataset, pipe, batch_size: int=BATCH_SIZE):
+    all_snippets = []
+    # Process the dataset in batches
+    with torch.no_grad():
+        for i in tqdm(range(0, len(dataset), batch_size), desc="Running inference"):
+            batch = dataset[i:i+batch_size]["prompt"]  # Get a batch of prompts
+
+            start = time.time()
+
+            results = pipe(batch)  # Perform inference using the pipeline
+
+            inference_time = time.time() - start
+
+            # Print the results for each item in the batch
+            for j, result in enumerate(results):
+                # print(f"\nPrompt: {batch[j]}")
+                print(f"Generated Text: {result[0]['generated_text'][-1]['content'].strip()}\n")    
+                sys.stdout.flush()
+
+            print(f'This took {inference_time} seconds\n')
+
+            snippets = [x[0]['generated_text'][-1]['content'].strip() for x in results]
+
+            all_snippets.extend(snippets)
+#             print(all_snippets)
+    return all_snippets

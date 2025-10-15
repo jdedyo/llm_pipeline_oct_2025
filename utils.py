@@ -278,9 +278,14 @@ def get_most_recent_file(p: Path):
     candidates = list(parent.glob(base_name + "_*"))
 
     if not candidates:
-        raise FileNotFoundError(
-            f"No timestamped copies matching '{base_name}_*' in {parent}"
-        )
+        # Check if the non-timestamped version exists
+        non_timestamped = parent / f"{base_name}{p.suffix}"
+        if non_timestamped.exists():
+            return non_timestamped
+        else:
+            raise FileNotFoundError(
+                f"No timestamped or base file found matching '{base_name}' in {parent}"
+            )
 
     # Debug print without exhausting an iterator later
     # print([str(p) for p in candidates])
@@ -299,5 +304,31 @@ def get_most_recent_file(p: Path):
     most_recent = max(parsed, key=lambda x: x[1])[0]
     return most_recent
 
+def get_chunk_num_range() -> List[int]:
+    pattern = re.compile(r"^oos_chunk_(\d+)\.csv$")
+    nums = []
+    for path in OOS_DATA_DIR.glob("oos_chunk_*.csv"):
+        m = pattern.match(path.name)
+        if m:
+            nums.append(int(m.group(1)))
+    return sorted(nums)
 
+def get_oos_chunk_path_from_num(chunk_num: int) -> pd.DataFrame:
+    p = OOS_DATA_DIR / f"oos_chunk_{chunk_num}.csv"
+    if not p.exists():
+        raise FileNotFoundError(f"No chunk file found for number {chunk_num}: {p}")
+    return p
+
+def load_oos_chunk_from_num(chunk_num: int) -> pd.DataFrame:
+    return load_data(get_oos_chunk_path_from_num(chunk_num))
+
+def save_oos_chunk_results(chunk_num: int, results: List[str], cfg: ModelRegistry):
+    col = cfg['result_col']
     
+    df = load_oos_chunk_from_num(chunk_num)
+
+    df[col] = results
+
+    save_data(df, cfg['oos_results_dir'] / f"oos_chunk_{chunk_num}.csv")
+
+    return df

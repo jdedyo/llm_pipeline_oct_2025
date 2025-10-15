@@ -16,6 +16,8 @@ class ModelRegistry:
             train_ans_col: str,
             training_args: TrainingArguments,
             result_col: str,
+            oos_start_dir: Path,
+            oos_results_dir: Path,
             train_rag_data_path: Path=None,
             train_rag_data_col: str=None,
             train_rag_corpus_data_path: Path=None,
@@ -24,8 +26,10 @@ class ModelRegistry:
             test_rag_corpus_data_path: Path=None, 
             test_rag_corpus_data_col: str=None,
             test_rag_corpus_ans_col: str=None,
+            oos_rag_corpus_data_col: str=None,
+            oos_rag_corpus_data_path: Path=None,
             oos_rag_data_col: str=None,
-            oos_rag_data_path: Path=None) -> None:
+            oos_rag_corpus_ans_col: str=None) -> None:
             
         self._data[name] = {
             "name": name,
@@ -47,10 +51,14 @@ class ModelRegistry:
             "result_col": result_col,
             "train_rag_data_path": train_rag_data_path,
             "train_rag_data_col": train_rag_data_col,
-            "oos_rag_data_col": oos_rag_data_col,
-            "oos_rag_data_path": oos_rag_data_path,
+            "oos_rag_corpus_data_col": oos_rag_corpus_data_col,
+            "oos_rag_corpus_data_path": oos_rag_corpus_data_path,
             "train_rag_corpus_data_path": train_rag_corpus_data_path,
             "train_rag_corpus_data_col": train_rag_corpus_data_col,
+            "oos_rag_data_col": oos_rag_data_col,
+            "oos_rag_corpus_ans_col": oos_rag_corpus_ans_col,
+            "oos_start_dir": oos_start_dir,
+            "oos_results_dir": oos_results_dir,
         }
 
     def choices(self) -> Iterable[str]:

@@ -10,8 +10,24 @@ DEBUG = True
 HOME = Path.home()
 
 PROMPTS_DIR = Path("./prompts")
+PROMPTS_DIR.mkdir(parents=True, exist_ok=True)
+
+RAW_OOS_DATA_LOC = Path("/nfs/roberts/project/pi_co337/jmd324/text_extraction_pipeline_sep_2025/results/all_ocr_oos.csv")
+OOS_CHUNK_SIZE = 30_000
+
+OOS_DIR = Path("./oos")
+
+OOS_DATA_DIR = OOS_DIR / "oos_data"
+OOS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+OOS_DATA_WITH_SNIPPETS_DIR = OOS_DIR / "oos_data_with_snippets"
+OOS_DATA_WITH_SNIPPETS_DIR.mkdir(parents=True, exist_ok=True)
+
+OOS_RESULTS_DIR = OOS_DIR / "oos_results"
+OOS_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 MODELS_LOC = Path("/home/jmd324/scratch_pi_co337/jmd324") / "models"
+MODELS_LOC.mkdir(parents=True, exist_ok=True)
 
 TABULATOR_BASE_MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct" # Model id from the huggingface website
 SNIPPET_BASE_MODEL_ID = TABULATOR_BASE_MODEL_ID
@@ -86,24 +102,34 @@ REGISTRY.add(
     model_id=TABULATOR_BASE_MODEL_ID,
     save_path=MODELS_LOC / "f1",
     base_model_path=TABULATOR_BASE_MODEL_DIR,
-    train_data_path=PARTITION_1_PATH,
-    train_rag_corpus_data_path=PARTITION_1_PATH,
-    train_rag_corpus_data_col="g2_snippet",
-    train_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
     prompt_path=TABULATOR_PROMPT_PATH,
-    test_data_path=PARTITION_2_PATH,
-    test_data_save_path=PARTITION_2_PATH,
-    test_rag_corpus_data_path=PARTITION_2_PATH,
-    test_rag_corpus_data_col="g1_snippet",
-    test_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
+
+    train_data_path=PARTITION_1_PATH,
     train_epochs=NUM_TABULATOR_TRAIN_EPOCHS,
     train_ans_col=TABULATOR_ANSWER_COL,
     training_args=DEFAULT_TRAINING_ARGS,
-    result_col="f1_table",
+
+    train_rag_corpus_data_path=PARTITION_1_PATH,
+    train_rag_corpus_data_col="g2_snippet",
+    train_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
     # train_rag_data_path=PARTITION_1_PATH,
     train_rag_data_col="g2_snippet",
+
+    test_data_path=PARTITION_2_PATH,
+    test_data_save_path=PARTITION_2_PATH,
+    result_col="f1_table",
+
+    test_rag_corpus_data_path=PARTITION_2_PATH,
+    test_rag_corpus_data_col="g1_snippet",
+    test_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
+
+    oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g1",
+    oos_results_dir=OOS_RESULTS_DIR / "f1",
+
+    oos_rag_corpus_data_col="g1_snippet",
+    oos_rag_corpus_data_path=PARTITION_2_PATH,
     oos_rag_data_col="g1_snippet",
-    oos_rag_data_path=PARTITION_2_PATH
+    oos_rag_corpus_ans_col=TABULATOR_ANSWER_COL
 )
 REGISTRY.add(
     "f2",
@@ -111,24 +137,34 @@ REGISTRY.add(
     model_id=TABULATOR_BASE_MODEL_ID,
     save_path=MODELS_LOC / "f2",
     base_model_path=TABULATOR_BASE_MODEL_DIR,
-    train_data_path=PARTITION_2_PATH,
-    train_rag_corpus_data_path=PARTITION_2_PATH,
-    train_rag_corpus_data_col="g1_snippet",
-    train_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
     prompt_path=TABULATOR_PROMPT_PATH,
-    test_data_path=PARTITION_1_PATH,
-    test_data_save_path=PARTITION_1_PATH,
-    test_rag_corpus_data_path=PARTITION_1_PATH,
-    test_rag_corpus_data_col="g2_snippet",
-    test_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
+
+    train_data_path=PARTITION_2_PATH,
     train_epochs=NUM_TABULATOR_TRAIN_EPOCHS,
     train_ans_col=TABULATOR_ANSWER_COL,
     training_args=DEFAULT_TRAINING_ARGS,
-    result_col="f2_table",
-    train_rag_data_path=PARTITION_2_PATH,
+
+    train_rag_corpus_data_path=PARTITION_2_PATH,
+    train_rag_corpus_data_col="g1_snippet",
+    train_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
+    # train_rag_data_path=PARTITION_2_PATH,
     train_rag_data_col="g1_snippet",
+    
+    test_data_path=PARTITION_1_PATH,
+    test_data_save_path=PARTITION_1_PATH,
+    result_col="f2_table",
+
+    test_rag_corpus_data_path=PARTITION_1_PATH,
+    test_rag_corpus_data_col="g2_snippet",
+    test_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
+    
+    oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2",
+    oos_results_dir=OOS_RESULTS_DIR / "f2",
+
+    oos_rag_corpus_data_col="g2_snippet",
+    oos_rag_corpus_data_path=PARTITION_1_PATH,
     oos_rag_data_col="g2_snippet",
-    oos_rag_data_path=PARTITION_1_PATH
+    oos_rag_corpus_ans_col=TABULATOR_ANSWER_COL
 )
 REGISTRY.add(
     "g1",
@@ -136,14 +172,19 @@ REGISTRY.add(
     model_id=SNIPPET_BASE_MODEL_ID,
     save_path=MODELS_LOC / "g1",
     base_model_path=SNIPPET_BASE_MODEL_DIR,
-    train_data_path=PARTITION_1_PATH,
     prompt_path=SNIPPET_PROMPT_PATH,
-    test_data_path=PARTITION_2_PATH,
-    test_data_save_path=PARTITION_2_PATH,
+
+    train_data_path=PARTITION_1_PATH,
     train_epochs=NUM_SNIPPET_TRAIN_EPOCHS,
     train_ans_col=SNIPPET_ANSWER_COL,
     training_args=DEFAULT_TRAINING_ARGS,
+    
+    test_data_path=PARTITION_2_PATH,
+    test_data_save_path=PARTITION_2_PATH,
     result_col="g1_snippet",
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g1"
 )
 REGISTRY.add(
     "g2",
@@ -151,14 +192,20 @@ REGISTRY.add(
     model_id=SNIPPET_BASE_MODEL_ID,
     save_path=MODELS_LOC / "g2",
     base_model_path=SNIPPET_BASE_MODEL_DIR,
-    train_data_path=PARTITION_2_PATH,
     prompt_path=SNIPPET_PROMPT_PATH,
-    test_data_path=PARTITION_1_PATH,
-    test_data_save_path=PARTITION_1_PATH,
+
+    train_data_path=PARTITION_2_PATH,
     train_epochs=NUM_SNIPPET_TRAIN_EPOCHS,
     train_ans_col=SNIPPET_ANSWER_COL,
     training_args=DEFAULT_TRAINING_ARGS,
+    
+    test_data_path=PARTITION_1_PATH,
+    test_data_save_path=PARTITION_1_PATH,
+
     result_col="g2_snippet",
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2"
 )
 REGISTRY.add( # TODO: remove when done debugging RAG stuff
     "small_snippet_extractor",
@@ -174,6 +221,10 @@ REGISTRY.add( # TODO: remove when done debugging RAG stuff
     train_ans_col=SNIPPET_ANSWER_COL,
     training_args=DEFAULT_TRAINING_ARGS,
     result_col="g2_snippet",
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2"
+
 )
 REGISTRY.add( # TODO: remove after debugging rag
     "small_tabulator",
@@ -194,8 +245,11 @@ REGISTRY.add( # TODO: remove after debugging rag
     result_col="f1_table",
     # train_rag_data_path=PARTITION_1_PATH,
     train_rag_data_col="g2_snippet",
-    oos_rag_data_col="g1_snippet",
-    oos_rag_data_path=PARTITION_2_PATH
+    oos_rag_corpus_data_col="g1_snippet",
+    oos_rag_corpus_data_path=PARTITION_2_PATH,
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2"
 )
 
 
