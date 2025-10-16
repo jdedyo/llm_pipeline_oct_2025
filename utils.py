@@ -318,8 +318,8 @@ def get_chunk_num_range() -> List[int]:
             nums.append(int(m.group(1)))
     return sorted(nums)
 
-def get_oos_chunk_path_from_num(chunk_num: int) -> pd.DataFrame:
-    p = OOS_DATA_DIR / f"oos_chunk_{chunk_num}.csv"
+def get_oos_chunk_path_from_num(chunk_num: int, chunk_dir: Path=OOS_DATA_DIR) -> pd.DataFrame:
+    p = chunk_dir / f"oos_chunk_{chunk_num}.csv"
     if not p.exists():
         raise FileNotFoundError(f"No chunk file found for number {chunk_num}: {p}")
     return p

@@ -64,6 +64,7 @@ class ModelRegistry:
             "oos_start_dir": oos_start_dir,
             "oos_results_dir": oos_results_dir,
             "test_check_accuracy": test_check_accuracy,
+            "test_correct_ans_col": test_correct_ans_col,
         }
 
     def choices(self) -> Iterable[str]:

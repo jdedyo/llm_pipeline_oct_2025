@@ -103,23 +103,13 @@ def generate_prompts(prompt_path: Path,
 
     cleanprompt = prompt_path.read_text(encoding="utf-8")
 
-    if train_bool:
-        ans = data[correct_ans_col_name]
-        prompts = pd.Series(
-            [
-                chat_template(cleanprompt.replace("[YYYY]", str(y)).replace("[PLAN]", str(p)), tokenizer, a, train_bool)
-                for p, y, a in zip(plans, years, ans)
-            ],
-            index=data.index,
-        )
-    else:
-        prompts = pd.Series(
-            [
-                chat_template(cleanprompt.replace("[YYYY]", str(y)).replace("[PLAN]", str(p)), tokenizer)
-                for p, y in zip(plans, years)
-            ],
-            index=data.index,
-        )
+    prompts = pd.Series(
+        [
+            cleanprompt.replace("[YYYY]", str(y)).replace("[PLAN]", str(p))
+            for p, y in zip(plans, years)
+        ],
+        index=data.index,
+    )
 
     if rag_data is not None:
         print("Loading rag model")
@@ -154,10 +144,17 @@ def generate_prompts(prompt_path: Path,
                     dynamic_ncols=True
                 ):
                 
-            query_data = make_query(query_snippets[i], query_plan_ids[i], query_years[i])
-            match_snips, match_tables, match_years, match_plan_ids = rag_generator(rag_model, query_data, corpus_data)
-            rag_prompts.append(add_rag_examples(p, match_snips, match_tables, match_years))
-        
+            try: # TODO: remove try-except after debugging.
+                query_data = make_query(query_snippets[i], query_plan_ids[i], query_years[i])
+                match_snips, match_tables, match_years, match_plan_ids = rag_generator(rag_model, query_data, corpus_data)
+                rag_prompts.append(add_rag_examples(p, match_snips, match_tables, match_years))
+            except:
+                print("p: ", p)
+                print("match_snips: ", match_snips)
+                print("match_tables: ", match_tables)
+                print("match_years: ", match_years)
+                print("match_plan_ids: ", match_plan_ids)
+                raise
         del rag_model
         torch.cuda.empty_cache()
 
@@ -165,6 +162,18 @@ def generate_prompts(prompt_path: Path,
         # TODO: COMPLETE RAG PART
         with open("debug_generate_prompts.txt", "w", encoding="utf-8") as f:
             f.write("\n\n+++++++++++++++++++++\n\n".join(str(p) for p in prompts[:100]))
+
+    if train_bool:
+        ans = data[correct_ans_col_name]
+        prompts = [
+                chat_template(p, tokenizer, a, train_bool)
+                for p, y, a in zip(prompts, years, ans)
+            ]
+    else:
+        prompts = [
+                chat_template(p, tokenizer)
+                for p, y in zip(prompts, years)
+            ]
 
     processed_prompts = list(prompts)
     

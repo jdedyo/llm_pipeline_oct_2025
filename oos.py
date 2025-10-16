@@ -36,7 +36,7 @@ if __name__ == "__main__":
     print(f"  oos_rag_corpus_data_col  = {cfg['oos_rag_corpus_data_col']}")
     print(f"  oos_rag_corpus_data_path = {cfg['oos_rag_corpus_data_path']}")
 
-    oos_chunk_path = get_oos_chunk_path_from_num(args.chunk)
+    oos_chunk_path = get_oos_chunk_path_from_num(args.chunk, cfg['oos_start_dir'])
     print(f"Inferencing on OOS chunk {args.chunk} ({oos_chunk_path})...")
 
     model, tokenizer = get_most_recent_model_and_tokenizer(cfg)
