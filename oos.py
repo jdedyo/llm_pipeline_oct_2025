@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     model, tokenizer = get_most_recent_model_and_tokenizer(cfg)
 
-    oos_prompts = train_data = generate_prompts( # TODO: make this reflect OOS stuff
+    oos_prompts = generate_prompts( # TODO: make this reflect OOS stuff
         prompt_path=cfg['prompt_path'],
         data_path=oos_chunk_path,
         tokenizer=tokenizer,

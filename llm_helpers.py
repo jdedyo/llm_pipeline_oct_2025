@@ -71,6 +71,7 @@ def generate_prompts(prompt_path: Path,
                     rag_corpus_ans_col_name: str=None,
                     rag_corpus_data_year_col_name: str='year',
                     data_year_col_name: str='year',
+                    id_col_for_rag: str=PARTITION_COL,
                     train_bool: bool=False) -> Dataset:
     
     # if oos_bool and train_bool:
@@ -123,7 +124,7 @@ def generate_prompts(prompt_path: Path,
     if rag_data is not None:
         print("Loading rag model")
         rag_model = load_rag_model()
-        rag_plan_ids = rag_data[PARTITION_COL].tolist()
+        rag_plan_ids = rag_data[id_col_for_rag].tolist()
         rag_snips = rag_data[rag_corpus_data_col_name]
         rag_tables = rag_data[rag_corpus_ans_col_name]
         rag_years = rag_data[rag_corpus_data_year_col_name]
@@ -136,10 +137,10 @@ def generate_prompts(prompt_path: Path,
                                 rag_years)
         
 
-        if PARTITION_COL in data.columns:
-            query_plan_ids = data[PARTITION_COL].tolist()
+        if id_col_for_rag in data.columns:
+            query_plan_ids = data[id_col_for_rag].tolist()
         else:
-            warnings.warn(f"Column '{PARTITION_COL}' not found in data; filling with NaN for RAG filtering.", stacklevel=1)
+            warnings.warn(f"Column '{id_col_for_rag}' not found in data; filling with NaN for RAG filtering.", stacklevel=1)
             query_plan_ids = [np.nan] * len(data)
 
         query_years    = years.tolist()

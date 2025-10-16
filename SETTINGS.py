@@ -122,6 +122,9 @@ REGISTRY.add(
     test_rag_corpus_data_path=PARTITION_2_PATH,
     test_rag_corpus_data_col="g1_snippet",
     test_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
+    test_rag_data_col="g1_snippet",
+    test_check_accuracy=True,
+    test_correct_ans_col=TABULATOR_ANSWER_COL,
 
     oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g1",
     oos_results_dir=OOS_RESULTS_DIR / "f1",
@@ -157,7 +160,10 @@ REGISTRY.add(
     test_rag_corpus_data_path=PARTITION_1_PATH,
     test_rag_corpus_data_col="g2_snippet",
     test_rag_corpus_ans_col=TABULATOR_ANSWER_COL,
-    
+    test_rag_data_col="g2_snippet",
+    test_check_accuracy=True,
+    test_correct_ans_col=TABULATOR_ANSWER_COL,
+
     oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2",
     oos_results_dir=OOS_RESULTS_DIR / "f2",
 

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List
 import math
 import re
+from fractions import Fraction
 
 def load_data(path: Path) -> pd.DataFrame:
     """
@@ -98,8 +99,12 @@ def normalize_match_formula(x):
 
 def float_to_str(number):
     try:
-        n = float(number)
-    except ValueError:
+        # Handle fractions like "2/3"
+        if isinstance(number, str) and "/" in number:
+            n = float(Fraction(number))
+        else:
+            n = float(number)
+    except Exception:
         return "NA"
     # correct for floating point error
     n = round(n, 5)
@@ -335,3 +340,51 @@ def save_oos_chunk_results(chunk_num: int, results: List[str], cfg: ModelRegistr
     save_data(df, cfg['oos_results_dir'] / f"oos_chunk_{chunk_num}.csv")
 
     return df
+
+
+def extract_entries_from_llm_table(table: str):
+    """
+    Extracts the entries from the bottom row of a Markdown-style table.
+
+    Example input:
+        match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3
+        ------------------------------------------------------------------
+        0.5 | 0.06 | NA | NA | NA | NA
+
+    Returns:
+        ['0.5', '0.06', 'NA', 'NA', 'NA', 'NA']
+    """
+    # Find the last line that contains at least one '|' and a non-dash character
+    lines = [line.strip() for line in table.strip().splitlines() if "|" in line]
+    if not lines:
+        return []
+    
+    bottom_line = lines[-1]
+
+    # Extract values between | ... |, stripping extra spaces
+    matches = re.findall(r"\|\s*([^|]+?)\s*(?=\|)", f"|{bottom_line}|")
+
+    return matches
+
+def check_more_complicated(table: str):
+    pattern = re.compile(r"\bcomplicated\b", re.IGNORECASE)
+    return bool(pattern.search(table))
+
+def check_same_table(t1: str, t2: str):
+    if check_more_complicated(t1) and check_more_complicated(t2):
+        return True
+    elif check_more_complicated(t1) or check_more_complicated(t2):
+        return False
+
+    l1 = [float_to_str(x) for x in extract_entries_from_llm_table(t1)] or []
+    l2 = [float_to_str(x) for x in extract_entries_from_llm_table(t2)] or []
+    return l1 == l2
+
+def get_boolean_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
+    df = pd.DataFrame({'llm': llm_output, 'ans': correct_col})
+    return df.apply(lambda row: check_same_table(row['llm'], row['ans']), axis=1).rename("is_correct")
+
+# correct_col should only contain tables and More complicated
+def check_accuracy(llm_output: list, correct_col: [list | pd.Series]):
+    score = get_boolean_accuracy_col(llm_output, correct_col)
+    return score.mean()

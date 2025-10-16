@@ -26,10 +26,13 @@ class ModelRegistry:
             test_rag_corpus_data_path: Path=None, 
             test_rag_corpus_data_col: str=None,
             test_rag_corpus_ans_col: str=None,
+            test_rag_data_col: str=None,
             oos_rag_corpus_data_col: str=None,
             oos_rag_corpus_data_path: Path=None,
             oos_rag_data_col: str=None,
-            oos_rag_corpus_ans_col: str=None) -> None:
+            oos_rag_corpus_ans_col: str=None,
+            test_check_accuracy: bool=False,
+            test_correct_ans_col: str=None) -> None:
             
         self._data[name] = {
             "name": name,
@@ -44,6 +47,7 @@ class ModelRegistry:
             "test_rag_corpus_data_path": test_rag_corpus_data_path,
             "test_rag_corpus_data_col": test_rag_corpus_data_col,
             "test_rag_corpus_ans_col": test_rag_corpus_ans_col,
+            "test_rag_data_col": test_rag_data_col,
             "train_rag_corpus_ans_col": train_rag_corpus_ans_col,
             "train_epochs": train_epochs,
             "train_ans_col": train_ans_col,
@@ -59,6 +63,7 @@ class ModelRegistry:
             "oos_rag_corpus_ans_col": oos_rag_corpus_ans_col,
             "oos_start_dir": oos_start_dir,
             "oos_results_dir": oos_results_dir,
+            "test_check_accuracy": test_check_accuracy,
         }
 
     def choices(self) -> Iterable[str]:
