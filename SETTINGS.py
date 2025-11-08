@@ -5,7 +5,7 @@ from transformers import TrainingArguments
 from models_registry import ModelRegistry
 from copy import deepcopy
 
-DEBUG = True
+DEBUG = False
 
 HOME = Path.home()
 

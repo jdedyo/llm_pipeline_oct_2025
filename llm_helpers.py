@@ -205,36 +205,38 @@ def get_most_recent_model_and_tokenizer(cfg: ModelRegistry):
         # remove_timestamp should strip suffix like '_MM_DD_YYYY-HH_AM/PM'
         loc = remove_timestamp(loc)
 
-    base_name = loc.name
-    parent = loc.parent
+        base_name = loc.name
+        parent = loc.parent
+        # Collect candidates that start with base_name + '_'
+        candidates = list(parent.glob(base_name + "_*"))
 
-    # Collect candidates that start with base_name + '_'
-    candidates = list(parent.glob(base_name + "_*"))
+        if not candidates:
+            raise FileNotFoundError(
+                f"No timestamped copies matching '{base_name}_*' in {parent}"
+            )
 
-    if not candidates:
-        raise FileNotFoundError(
-            f"No timestamped copies matching '{base_name}_*' in {parent}"
-        )
+        # Debug print without exhausting an iterator later
+        # print([str(p) for p in candidates])
 
-    # Debug print without exhausting an iterator later
-    # print([str(p) for p in candidates])
+        # Keep only those whose names parse to a timestamp
+        parsed = [(p, parse_timestamp(p, base_name)) for p in candidates]
+        parsed = [(p, dt) for p, dt in parsed if dt is not None]
 
-    # Keep only those whose names parse to a timestamp
-    parsed = [(p, parse_timestamp(p, base_name)) for p in candidates]
-    parsed = [(p, dt) for p, dt in parsed if dt is not None]
+        if not parsed:
+            raise FileNotFoundError(
+                f"Found {len(candidates)} candidates, but none matched the timestamp pattern "
+                f"'{base_name}_MM_DD_YYYY-HH_AM/PM'."
+            )
 
-    if not parsed:
-        raise FileNotFoundError(
-            f"Found {len(candidates)} candidates, but none matched the timestamp pattern "
-            f"'{base_name}_MM_DD_YYYY-HH_AM/PM'."
-        )
-
-    # Pick the latest by timestamp
-    most_recent = max(parsed, key=lambda x: x[1])[0]
+        # Pick the latest by timestamp
+        save_path = max(parsed, key=lambda x: x[1])[0]
+        
+    else:
+        save_path = Path(cfg['save_path'])
 
     model, tokenizer = get_llm_and_tokenizer(cfg['model_id'], cfg['base_model_path'])
 
-    model = PeftModelForCausalLM.from_pretrained(model, most_recent)
+    model = PeftModelForCausalLM.from_pretrained(model, save_path)
     model = model.merge_and_unload()
 
     return model, tokenizer

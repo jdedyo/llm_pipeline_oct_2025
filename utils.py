@@ -366,6 +366,34 @@ def extract_entries_from_llm_table(table: str):
 
     return matches
 
+def extract_and_clean_entries_from_llm_table(table: str):
+    return [float_to_str(x) for x in extract_entries_from_llm_table(table)]
+
+
+def extract_headers_from_llm_table(table: str):
+    """
+    Extracts the entries from the bottom row of a Markdown-style table.
+
+    Example input:
+        match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3
+        ------------------------------------------------------------------
+        0.5 | 0.06 | NA | NA | NA | NA
+
+    Returns:
+        ['match_rate_1', 'cap_1', 'match_rate_2', 'cap_2', 'match_rate_3', 'cap_3']
+    """
+    # Find the last line that contains at least one '|' and a non-dash character
+    lines = [line.strip() for line in table.strip().splitlines() if "|" in line]
+    if not lines:
+        return []
+    
+    top_line = lines[0]
+
+    # Extract values between | ... |, stripping extra spaces
+    matches = re.findall(r"\|\s*([^|]+?)\s*(?=\|)", f"|{top_line}|")
+
+    return matches
+
 def check_more_complicated(table: str):
     pattern = re.compile(r"\bcomplicated\b", re.IGNORECASE)
     return bool(pattern.search(table))
@@ -388,3 +416,22 @@ def get_boolean_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
 def check_accuracy(llm_output: list, correct_col: [list | pd.Series]):
     score = get_boolean_accuracy_col(llm_output, correct_col)
     return score.mean()
+
+def table_to_dict(table: str):
+    if check_more_complicated(table):
+        raise ValueError(f"Tried to make a dictionary from a non-table: {table}")
+    keys = extract_headers_from_llm_table(table)
+    vals = extract_and_clean_entries_from_llm_table(table)
+    return {k: v for k, v in zip(keys, vals)}
+
+def check_proper_table(table: str, correct_cols: List[str]):
+    if check_more_complicated(table):
+        return True
+    
+    cols = extract_headers_from_llm_table(table)
+
+    for x in cols:
+        if x not in correct_cols:
+            return False
+    
+    return True
