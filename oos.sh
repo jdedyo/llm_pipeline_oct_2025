@@ -1,7 +1,7 @@
 #!/bin/bash
 # run this file to inference an LLM on OOS chunks
 # bash oos.sh LLM_NAME MIN_CHUNK_NUM MAX_CHUNK_NUM
-# e.g. bash download_pdfs_range.sh f1 0 10
+# e.g. bash oos.sh f1 0 10
 
 # Check if at least three arguments are provided
 if [ $# -lt 3 ]; then

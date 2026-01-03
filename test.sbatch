@@ -6,7 +6,7 @@
 #SBATCH --output=logs/test_llm/%x-%j.log
 #SBATCH --open-mode=append
 #SBATCH --partition=gpu_h200
-#SBATCH --gpus=2
+#SBATCH --gpus=1
 
 module purge
 module load miniconda

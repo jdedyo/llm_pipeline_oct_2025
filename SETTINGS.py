@@ -5,6 +5,7 @@ from transformers import TrainingArguments
 from models_registry import ModelRegistry
 from copy import deepcopy
 
+# ----- administrative -----
 DEBUG = False
 
 HOME = Path.home()
@@ -25,6 +26,9 @@ OOS_DATA_WITH_SNIPPETS_DIR.mkdir(parents=True, exist_ok=True)
 
 OOS_RESULTS_DIR = OOS_DIR / "oos_results"
 OOS_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+FINAL_DATASETS_SAVE_DIR = OOS_RESULTS_DIR / 'datasets'
+FINAL_DATASETS_SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 MODELS_LOC = Path("/home/jmd324/scratch_pi_co337/jmd324") / "models"
 MODELS_LOC.mkdir(parents=True, exist_ok=True)
@@ -50,6 +54,23 @@ SMALL_SAMPLE_PATH = TRAIN_DATA / "small_sample.csv"
 
 PARTITION_COL = "plan_id"
 
+DATA_AVAILABLE_FLAG_COL = 'data_availability'
+
+CUTOFF_LEN = 8000  #Our dataset has long text
+
+NUM_TRAIN_PARTITIONS = 2
+
+PLAN_TEXT_COL = "ocr_text"
+
+ALL_OCR_TEXT_DATA_PATH = TRAIN_DATA / "all_ocr_train.csv"
+ALL_OCR_TEXT_COL = "ocr_text"
+
+BATCH_SIZE = 32
+
+NOW = datetime.now().strftime("%m_%d_%Y-%I_%p") # suffix for filenames so that we know which are newest
+
+# ----- matching -----
+
 MATCH_RATE_1_COL = "match_rate_1"
 MATCH_RATE_2_COL = "match_rate_2"
 MATCH_RATE_3_COL = "match_rate_3"
@@ -60,8 +81,6 @@ CAP_3_COL = "cap_3"
 RAW_MATCHING_SNIPPET_COL = "employer_matching_text"
 
 MATCH_FORMULA_COL = "match_formula"
-
-DATA_AVAILABLE_FLAG_COL = 'data_availability'
 
 CONVERT_MARGINAL_BOOL = True
 CORRECT_MATCHING_TABLE_COL = "correct_matching_table"
@@ -75,25 +94,30 @@ SNIPPET_PROMPT_PATH = PROMPTS_DIR / "snippet_extract_v8_contributions_matching_o
 
 NUM_TABULATOR_TRAIN_EPOCHS = 4
 NUM_SNIPPET_TRAIN_EPOCHS = 3
+try:
+    DEFAULT_TRAINING_ARGS = TrainingArguments( # Automatically set num_train_epochs and save_dir based on registry
+            per_device_train_batch_size=4,
+            auto_find_batch_size=True,
+            gradient_accumulation_steps=1,
+            learning_rate=1e-4,
+            bf16=True,
+            logging_steps=10,
+            optim="adamw_torch",
+            save_strategy="epoch",
+        )
 
-NOW = datetime.now().strftime("%m_%d_%Y-%I_%p") # suffix for filenames so that we know which are newest
+    TABULATOR_TRAINING_ARGS = deepcopy(DEFAULT_TRAINING_ARGS)
+    TABULATOR_TRAINING_ARGS.num_train_epochs = NUM_TABULATOR_TRAIN_EPOCHS
 
-DEFAULT_TRAINING_ARGS = TrainingArguments( # Automatically set num_train_epochs and save_dir based on registry
-        per_device_train_batch_size=4,
-        auto_find_batch_size=True,
-        gradient_accumulation_steps=1,
-        learning_rate=1e-4,
-        bf16=True,
-        logging_steps=10,
-        optim="adamw_torch",
-        save_strategy="epoch",
-    )
+    SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_TRAINING_ARGS)
+    SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_SNIPPET_TRAIN_EPOCHS
+except:
+    print("WARNING: Setting matching training arguments to None since an error was detected (often no GPU)...")
+    DEFAULT_TRAINING_ARGS = None
+    TABULATOR_TRAINING_ARGS = None
+    SNIPPET_TRAINING_ARGS = None
 
-TABULATOR_TRAINING_ARGS = deepcopy(DEFAULT_TRAINING_ARGS)
-TABULATOR_TRAINING_ARGS.num_train_epochs = NUM_TABULATOR_TRAIN_EPOCHS
 
-SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_TRAINING_ARGS)
-SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_SNIPPET_TRAIN_EPOCHS
 
 REGISTRY = ModelRegistry()
 REGISTRY.add(
@@ -258,6 +282,328 @@ REGISTRY.add( # TODO: remove after debugging rag
     oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2"
 )
 
+# ------ auto-enrollment models -------
+AE_OFFERED_COL = 'auto_enrolment_offered'
+AE_INIT_DEF_COL = 'initial_deferral'
+AE_AINC_OFFERED_COL = 'auto_increase_offered'
+AE_AINC_AMT_COL = 'AI_amount'
+AE_AINC_CAP_COL = 'AI_cap'
+
+RAW_AE_SNIPPET_COL = "auto_features_text"
+
+CORRECT_AE_TABLE_COL = "correct_autoenrollment_table"
+CORRECT_AE_SNIPPET_COL = "correct_autoenrollment_snippet"
+
+AE_TABULATOR_ANSWER_COL = CORRECT_AE_TABLE_COL
+AE_SNIPPET_ANSWER_COL = CORRECT_AE_SNIPPET_COL
+
+AE_TABULATOR_PROMPT_PATH = PROMPTS_DIR / "one_shot_RAG_nodistinction_auto_enrollment_prompt.txt"
+AE_SNIPPET_PROMPT_PATH = PROMPTS_DIR / "snippet_extract_v8_autoenrollment.txt"
+
+NUM_AE_TABULATOR_TRAIN_EPOCHS = 4
+NUM_AE_SNIPPET_TRAIN_EPOCHS = 3
+
+try:
+    DEFAULT_AE_TRAINING_ARGS = TrainingArguments( # Automatically set num_train_epochs and save_dir based on registry
+        per_device_train_batch_size=4,
+        auto_find_batch_size=True,
+        gradient_accumulation_steps=1,
+        learning_rate=1e-4,
+        bf16=True,
+        logging_steps=10,
+        optim="adamw_torch",
+        save_strategy="epoch",
+    )
+
+    AE_TABULATOR_TRAINING_ARGS = deepcopy(DEFAULT_AE_TRAINING_ARGS)
+    AE_TABULATOR_TRAINING_ARGS.num_train_epochs = NUM_AE_TABULATOR_TRAIN_EPOCHS
+
+    AE_SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_AE_TRAINING_ARGS)
+    AE_SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_AE_SNIPPET_TRAIN_EPOCHS
+except:
+    print("WARNING: Setting autoenrollment training arguments to None since an error was detected (often no GPU)...")
+    DEFAULT_AE_TRAINING_ARGS = None
+    AE_TABULATOR_TRAINING_ARGS = None
+    AE_SNIPPET_TRAINING_ARGS = None
+
+REGISTRY.add(
+    "f1_AE",
+    type="TABULATOR",
+    model_id=TABULATOR_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "f1_AE",
+    base_model_path=TABULATOR_BASE_MODEL_DIR,
+    prompt_path=AE_TABULATOR_PROMPT_PATH,
+
+    train_data_path=PARTITION_1_PATH,
+    train_epochs=NUM_AE_TABULATOR_TRAIN_EPOCHS,
+    train_ans_col=AE_TABULATOR_ANSWER_COL,
+    training_args=DEFAULT_AE_TRAINING_ARGS,
+
+    train_rag_corpus_data_path=PARTITION_1_PATH,
+    train_rag_corpus_data_col="g2_AE_snippet",
+    train_rag_corpus_ans_col=AE_TABULATOR_ANSWER_COL,
+    # train_rag_data_path=PARTITION_1_PATH,
+    train_rag_data_col="g2_AE_snippet",
+
+    test_data_path=PARTITION_2_PATH,
+    test_data_save_path=PARTITION_2_PATH,
+    result_col="f1_AE_table",
+
+    test_rag_corpus_data_path=PARTITION_2_PATH,
+    test_rag_corpus_data_col="g1_AE_snippet",
+    test_rag_corpus_ans_col=AE_TABULATOR_ANSWER_COL,
+    test_rag_data_col="g1_AE_snippet",
+    test_check_accuracy=True,
+    test_correct_ans_col=AE_TABULATOR_ANSWER_COL,
+
+    oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g1_AE",
+    oos_results_dir=OOS_RESULTS_DIR / "f1_AE",
+
+    oos_rag_corpus_data_col="g1_AE_snippet",
+    oos_rag_corpus_data_path=PARTITION_2_PATH,
+    oos_rag_data_col="g1_AE_snippet",
+    oos_rag_corpus_ans_col=AE_TABULATOR_ANSWER_COL
+)
+REGISTRY.add(
+    "f2_AE",
+    type="TABULATOR",
+    model_id=TABULATOR_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "f2_AE",
+    base_model_path=TABULATOR_BASE_MODEL_DIR,
+    prompt_path=AE_TABULATOR_PROMPT_PATH,
+
+    train_data_path=PARTITION_2_PATH,
+    train_epochs=NUM_AE_TABULATOR_TRAIN_EPOCHS,
+    train_ans_col=AE_TABULATOR_ANSWER_COL,
+    training_args=DEFAULT_AE_TRAINING_ARGS,
+
+    train_rag_corpus_data_path=PARTITION_2_PATH,
+    train_rag_corpus_data_col="g1_AE_snippet",
+    train_rag_corpus_ans_col=AE_TABULATOR_ANSWER_COL,
+    # train_rag_data_path=PARTITION_2_PATH,
+    train_rag_data_col="g1_AE_snippet",
+    
+    test_data_path=PARTITION_1_PATH,
+    test_data_save_path=PARTITION_1_PATH,
+    result_col="f2_AE_table",
+
+    test_rag_corpus_data_path=PARTITION_1_PATH,
+    test_rag_corpus_data_col="g2_AE_snippet",
+    test_rag_corpus_ans_col=AE_TABULATOR_ANSWER_COL,
+    test_rag_data_col="g2_AE_snippet",
+    test_check_accuracy=True,
+    test_correct_ans_col=AE_TABULATOR_ANSWER_COL,
+
+    oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2_AE",
+    oos_results_dir=OOS_RESULTS_DIR / "f2_AE",
+
+    oos_rag_corpus_data_col="g2_AE_snippet",
+    oos_rag_corpus_data_path=PARTITION_1_PATH,
+    oos_rag_data_col="g2_AE_snippet",
+    oos_rag_corpus_ans_col=AE_TABULATOR_ANSWER_COL
+)
+REGISTRY.add(
+    "g1_AE",
+    type="SNIPPET",
+    model_id=SNIPPET_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "g1_AE",
+    base_model_path=SNIPPET_BASE_MODEL_DIR,
+    prompt_path=AE_SNIPPET_PROMPT_PATH,
+
+    train_data_path=PARTITION_1_PATH,
+    train_epochs=NUM_AE_SNIPPET_TRAIN_EPOCHS,
+    train_ans_col=AE_SNIPPET_ANSWER_COL,
+    training_args=DEFAULT_AE_TRAINING_ARGS,
+    
+    test_data_path=PARTITION_2_PATH,
+    test_data_save_path=PARTITION_2_PATH,
+    result_col="g1_AE_snippet",
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g1_AE"
+)
+REGISTRY.add(
+    "g2_AE",
+    type="SNIPPET",
+    model_id=SNIPPET_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "g2_AE",
+    base_model_path=SNIPPET_BASE_MODEL_DIR,
+    prompt_path=AE_SNIPPET_PROMPT_PATH,
+
+    train_data_path=PARTITION_2_PATH,
+    train_epochs=NUM_AE_SNIPPET_TRAIN_EPOCHS,
+    train_ans_col=AE_SNIPPET_ANSWER_COL,
+    training_args=DEFAULT_AE_TRAINING_ARGS,
+    
+    test_data_path=PARTITION_1_PATH,
+    test_data_save_path=PARTITION_1_PATH,
+
+    result_col="g2_AE_snippet",
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2_AE"
+)
+
+# ------ vesting models -------
+
+VESTING_OFFERED_COL = 'vesting'
+NUM_VESTING_YEARS = 7 # so we have year0, year1, ..., year6
+VESTING_YEAR_COL_STEM = 'vesting_year' # this means the columns are vesting_year0, vesting_year1, ...
+
+RAW_VESTING_SNIPPET_COL = "vesting_schedule_text"
+
+CORRECT_VESTING_TABLE_COL = "correct_vesting_table"
+CORRECT_VESTING_SNIPPET_COL = "correct_vesting_snippet"
+
+VESTING_TABULATOR_ANSWER_COL = CORRECT_VESTING_TABLE_COL
+VESTING_SNIPPET_ANSWER_COL = CORRECT_VESTING_SNIPPET_COL
+
+VESTING_TABULATOR_PROMPT_PATH = PROMPTS_DIR / "one_shot_RAG_nodistinction_vesting_prompt.txt"
+VESTING_SNIPPET_PROMPT_PATH = PROMPTS_DIR / "snippet_extract_v8_vesting.txt"
+
+NUM_VESTING_TABULATOR_TRAIN_EPOCHS = 4
+NUM_VESTING_SNIPPET_TRAIN_EPOCHS = 3
+
+try:
+    DEFAULT_VESTING_TRAINING_ARGS = TrainingArguments( # Automatically set num_train_epochs and save_dir based on registry
+        per_device_train_batch_size=4,
+        auto_find_batch_size=True,
+        gradient_accumulation_steps=1,
+        learning_rate=1e-4,
+        bf16=True,
+        logging_steps=10,
+        optim="adamw_torch",
+        save_strategy="epoch",
+    )
+
+    VESTING_TABULATOR_TRAINING_ARGS = deepcopy(DEFAULT_VESTING_TRAINING_ARGS)
+    VESTING_TABULATOR_TRAINING_ARGS.num_train_epochs = NUM_VESTING_TABULATOR_TRAIN_EPOCHS
+
+    VESTING_SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_VESTING_TRAINING_ARGS)
+    VESTING_SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_VESTING_SNIPPET_TRAIN_EPOCHS
+except:
+    print("WARNING: Setting vesting training arguments to None since an error was detected (often no GPU)...")
+    DEFAULT_VESTING_TRAINING_ARGS = None
+    VESTING_TABULATOR_TRAINING_ARGS = None
+    VESTING_SNIPPET_TRAINING_ARGS = None
+
+REGISTRY.add(
+    "f1_VESTING",
+    type="TABULATOR",
+    model_id=TABULATOR_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "f1_VESTING",
+    base_model_path=TABULATOR_BASE_MODEL_DIR,
+    prompt_path=VESTING_TABULATOR_PROMPT_PATH,
+
+    train_data_path=PARTITION_1_PATH,
+    train_epochs=NUM_VESTING_TABULATOR_TRAIN_EPOCHS,
+    train_ans_col=VESTING_TABULATOR_ANSWER_COL,
+    training_args=DEFAULT_VESTING_TRAINING_ARGS,
+
+    train_rag_corpus_data_path=PARTITION_1_PATH,
+    train_rag_corpus_data_col="g2_VESTING_snippet",
+    train_rag_corpus_ans_col=VESTING_TABULATOR_ANSWER_COL,
+    # train_rag_data_path=PARTITION_1_PATH,
+    train_rag_data_col="g2_VESTING_snippet",
+
+    test_data_path=PARTITION_2_PATH,
+    test_data_save_path=PARTITION_2_PATH,
+    result_col="f1_VESTING_table",
+
+    test_rag_corpus_data_path=PARTITION_2_PATH,
+    test_rag_corpus_data_col="g1_VESTING_snippet",
+    test_rag_corpus_ans_col=VESTING_TABULATOR_ANSWER_COL,
+    test_rag_data_col="g1_VESTING_snippet",
+    test_check_accuracy=True,
+    test_correct_ans_col=VESTING_TABULATOR_ANSWER_COL,
+
+    oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g1_VESTING",
+    oos_results_dir=OOS_RESULTS_DIR / "f1_VESTING",
+
+    oos_rag_corpus_data_col="g1_VESTING_snippet",
+    oos_rag_corpus_data_path=PARTITION_2_PATH,
+    oos_rag_data_col="g1_VESTING_snippet",
+    oos_rag_corpus_ans_col=VESTING_TABULATOR_ANSWER_COL
+)
+REGISTRY.add(
+    "f2_VESTING",
+    type="TABULATOR",
+    model_id=TABULATOR_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "f2_VESTING",
+    base_model_path=TABULATOR_BASE_MODEL_DIR,
+    prompt_path=VESTING_TABULATOR_PROMPT_PATH,
+
+    train_data_path=PARTITION_2_PATH,
+    train_epochs=NUM_VESTING_TABULATOR_TRAIN_EPOCHS,
+    train_ans_col=VESTING_TABULATOR_ANSWER_COL,
+    training_args=DEFAULT_VESTING_TRAINING_ARGS,
+
+    train_rag_corpus_data_path=PARTITION_2_PATH,
+    train_rag_corpus_data_col="g1_VESTING_snippet",
+    train_rag_corpus_ans_col=VESTING_TABULATOR_ANSWER_COL,
+    # train_rag_data_path=PARTITION_2_PATH,
+    train_rag_data_col="g1_VESTING_snippet",
+    
+    test_data_path=PARTITION_1_PATH,
+    test_data_save_path=PARTITION_1_PATH,
+    result_col="f2_VESTING_table",
+
+    test_rag_corpus_data_path=PARTITION_1_PATH,
+    test_rag_corpus_data_col="g2_VESTING_snippet",
+    test_rag_corpus_ans_col=VESTING_TABULATOR_ANSWER_COL,
+    test_rag_data_col="g2_VESTING_snippet",
+    test_check_accuracy=True,
+    test_correct_ans_col=VESTING_TABULATOR_ANSWER_COL,
+
+    oos_start_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2_VESTING",
+    oos_results_dir=OOS_RESULTS_DIR / "f2_VESTING",
+
+    oos_rag_corpus_data_col="g2_VESTING_snippet",
+    oos_rag_corpus_data_path=PARTITION_1_PATH,
+    oos_rag_data_col="g2_VESTING_snippet",
+    oos_rag_corpus_ans_col=VESTING_TABULATOR_ANSWER_COL
+)
+REGISTRY.add(
+    "g1_VESTING",
+    type="SNIPPET",
+    model_id=SNIPPET_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "g1_VESTING",
+    base_model_path=SNIPPET_BASE_MODEL_DIR,
+    prompt_path=VESTING_SNIPPET_PROMPT_PATH,
+
+    train_data_path=PARTITION_1_PATH,
+    train_epochs=NUM_VESTING_SNIPPET_TRAIN_EPOCHS,
+    train_ans_col=VESTING_SNIPPET_ANSWER_COL,
+    training_args=DEFAULT_VESTING_TRAINING_ARGS,
+    
+    test_data_path=PARTITION_2_PATH,
+    test_data_save_path=PARTITION_2_PATH,
+    result_col="g1_VESTING_snippet",
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g1_VESTING"
+)
+REGISTRY.add(
+    "g2_VESTING",
+    type="SNIPPET",
+    model_id=SNIPPET_BASE_MODEL_ID,
+    save_path=MODELS_LOC / "g2_VESTING",
+    base_model_path=SNIPPET_BASE_MODEL_DIR,
+    prompt_path=VESTING_SNIPPET_PROMPT_PATH,
+
+    train_data_path=PARTITION_2_PATH,
+    train_epochs=NUM_VESTING_SNIPPET_TRAIN_EPOCHS,
+    train_ans_col=VESTING_SNIPPET_ANSWER_COL,
+    training_args=DEFAULT_VESTING_TRAINING_ARGS,
+    
+    test_data_path=PARTITION_1_PATH,
+    test_data_save_path=PARTITION_1_PATH,
+
+    result_col="g2_VESTING_snippet",
+
+    oos_start_dir=OOS_DATA_DIR,
+    oos_results_dir=OOS_DATA_WITH_SNIPPETS_DIR / "g2_VESTING"
+)
 
 # optional debug suffix
 if DEBUG:
@@ -272,14 +618,3 @@ TRAIN_CONFIG = LoraConfig(
     task_type="CAUSAL_LM",
     target_modules = ['k_proj', 'q_proj', 'v_proj', 'o_proj', "gate_proj"]
 )
-
-CUTOFF_LEN = 8000  #Our dataset has long text
-
-NUM_TRAIN_PARTITIONS = 2
-
-PLAN_TEXT_COL = "ocr_text"
-
-ALL_OCR_TEXT_DATA_PATH = TRAIN_DATA / "all_ocr_train.csv"
-ALL_OCR_TEXT_COL = "ocr_text"
-
-BATCH_SIZE = 32
