@@ -67,7 +67,7 @@ def format_table_entries(table_info: List[str | float]):
         try:
             formatted.append(float_to_str(float(x)))
         except (TypeError, ValueError):
-            formatted.append(str(x))
+            formatted.append(str(x).strip())
     return formatted
 
 def generate_correct_table(df: pd.DataFrame, table_type: TableType):
@@ -84,19 +84,19 @@ def generate_correct_table(df: pd.DataFrame, table_type: TableType):
 
 def get_table_info(row: pd.DataFrame, table_type: TableType):
     cols = dataset_cols_dict[table_type]
-    table_info = [row.get(c) for c in cols]
+    # table_info = [row.get(c) for c in cols]
 
     if table_type == 'matching':
         match_formula = normalize_feature_formula(row.get(MATCH_FORMULA_COL))
         table_info = [row.get(c) for c in cols]
         
+        if CONVERT_MARGINAL_BOOL:
+            table_info = convert_marginal(table_info)
+
         table_info = [match_formula] + table_info
         
         if match_formula != 'Yes':
             table_info[1:] = [np.nan]*len(table_info[1:])
-
-        if CONVERT_MARGINAL_BOOL:
-            table_info = convert_marginal(table_info)
 
     elif table_type == 'autoenrollment':
         ae_offered = normalize_feature_formula(row.get(AE_OFFERED_COL))
@@ -131,23 +131,28 @@ def get_table_info(row: pd.DataFrame, table_type: TableType):
 def generate_correct_snippet_col(df: pd.DataFrame, table_type: TableType) -> List[str]:
     """
     Clean and UTF-8-sanitize the snippet column.
-    - Replaces NaN with ''
+    - Replaces NaN with no_mention_string
     - Forces string dtype
-    - Encodes/decodes as UTF-8, replacing invalid bytes
+    - Trims whitespace; empty -> no_mention_string
+    - Replaces literal "Missing" (case-insensitive, ignoring surrounding whitespace) -> no_mention_string
+    - Encodes/decodes to coerce to valid UTF-8
     - Returns a list of clean strings
     """
     colname = snippet_col_dict[table_type]
     no_mention_string = snippet_no_mention_dict[table_type]
-    out = (
+
+    s = (
         df[colname]
         .fillna(no_mention_string)
         .astype(str)
-        .apply(lambda x: x.strip() or no_mention_string)
+        .str.strip()
+        .str.replace(r"^\s*missing\s*$", no_mention_string, regex=True, flags=re.IGNORECASE)
+        .replace("", no_mention_string)
         .str.encode("latin1", errors="ignore")
         .str.decode("utf-8", errors="ignore")
-        .tolist()
     )
-    return out
+
+    return s.tolist()
 
 def float_to_str(number):
     try:
@@ -163,8 +168,8 @@ def float_to_str(number):
     if n <= 0:
         return "NA"
     if math.floor(n) == math.ceil(n):
-        return str(int(n))
-    return str(n)
+        return str(int(n)).strip()
+    return str(n).strip()
 
 # length of nonzero entries in list; assumes list has 6 entries
 def nonzero_length(inputList):
@@ -336,7 +341,7 @@ def get_feature_results_df(table_type: TableType):
 
         m_df = get_full_results_df(cfg['name'], 
                                    cfg['result_col'], 
-                                   cfg['oos_results_dir'].parent)
+                                   cfg['oos_results_dir'])
 
         m_df_processed = process_feature_results_df(m_df, cfg['name'], 
                                                           cfg['result_col'], 

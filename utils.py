@@ -92,120 +92,120 @@ def save_data(df: pd.DataFrame, path: Path, **kwargs) -> None:
         raise ValueError(f"Unsupported file extension: {ext}")
 
 
-def normalize_match_formula(x: str):
-    try:
-        s = x.strip()
-        if (s == 'Yes') or (s == 'Unknown'):
-            return s
-        return "More complicated"
-    except:
-        return "Unknown"
+# def normalize_match_formula(x: str):
+#     try:
+#         s = x.strip()
+#         if (s == 'Yes') or (s == 'Unknown'):
+#             return s
+#         return "More complicated"
+#     except:
+#         return "Unknown"
         
-def float_to_str(number):
-    try:
-        # Handle fractions like "2/3"
-        if isinstance(number, str) and "/" in number:
-            n = float(Fraction(number))
-        else:
-            n = float(number)
-    except Exception:
-        return "NA"
-    # correct for floating point error
-    n = round(n, 5)
-    if n <= 0:
-        return "NA"
-    if math.floor(n) == math.ceil(n):
-        return str(int(n))
-    return str(n)
+# def float_to_str(number):
+#     try:
+#         # Handle fractions like "2/3"
+#         if isinstance(number, str) and "/" in number:
+#             n = float(Fraction(number))
+#         else:
+#             n = float(number)
+#     except Exception:
+#         return "NA"
+#     # correct for floating point error
+#     n = round(n, 5)
+#     if n <= 0:
+#         return "NA"
+#     if math.floor(n) == math.ceil(n):
+#         return str(int(n))
+#     return str(n)
 
-# length of nonzero entries in list; assumes list has 6 entries
-def nonzero_length(inputList):
-    if inputList[0] == 0:
-        return 0
-    if inputList[2] == 0:
-        return 2
-    if inputList[4] == 0:
-        return 4
-    return 6
+# # length of nonzero entries in list; assumes list has 6 entries
+# def nonzero_length(inputList):
+#     if inputList[0] == 0:
+#         return 0
+#     if inputList[2] == 0:
+#         return 2
+#     if inputList[4] == 0:
+#         return 4
+#     return 6
 
-# given list of 6 floats with cumulative caps, convert to marginal
-# does not check the validity of the inputList, like whether it's already marginal or not 
-def convert_marginal(inputList):
-    output = inputList
-    if nonzero_length(output) == 4:# and output[3] > output[1]:
-        output[3] -= output[1]
-    elif nonzero_length(output) == 6:# and output[3] > output[1] and output[5] > output[3]:
-        output[5] -= output[3]
-        output[3] -= output[1]
-    return output
+# # given list of 6 floats with cumulative caps, convert to marginal
+# # does not check the validity of the inputList, like whether it's already marginal or not 
+# def convert_marginal(inputList):
+#     output = inputList
+#     if nonzero_length(output) == 4:# and output[3] > output[1]:
+#         output[3] -= output[1]
+#     elif nonzero_length(output) == 6:# and output[3] > output[1] and output[5] > output[3]:
+#         output[5] -= output[3]
+#         output[3] -= output[1]
+#     return output
 
-# Convert to latin-1 encoding to be able to save to .dta format
-def make_latin(x, errors="replace"):
-    if pd.isna(x):
-        return ""  # or return x if you want to preserve missingness
-    if isinstance(x, (bytes, bytearray)):
-        x = x.decode("utf-8", errors="replace")
-    s = str(x)
-    return s.encode("latin-1", errors=errors).decode("latin-1")
+# # Convert to latin-1 encoding to be able to save to .dta format
+# def make_latin(x, errors="replace"):
+#     if pd.isna(x):
+#         return ""  # or return x if you want to preserve missingness
+#     if isinstance(x, (bytes, bytearray)):
+#         x = x.decode("utf-8", errors="replace")
+#     s = str(x)
+#     return s.encode("latin-1", errors=errors).decode("latin-1")
 
 
-def generate_correct_matching_table(df: pd.DataFrame) -> List[str]:
-    cols = [MATCH_RATE_1_COL, CAP_1_COL, MATCH_RATE_2_COL, CAP_2_COL, MATCH_RATE_3_COL, CAP_3_COL]
-    out: List[str] = []
+# def generate_correct_matching_table(df: pd.DataFrame) -> List[str]:
+#     cols = [MATCH_RATE_1_COL, CAP_1_COL, MATCH_RATE_2_COL, CAP_2_COL, MATCH_RATE_3_COL, CAP_3_COL]
+#     out: List[str] = []
 
-    for _, row in df.iterrows():
-        # Decide whether this row is a simple 'Yes' formula
-        val = row.get(MATCH_FORMULA_COL)
-        is_yes = isinstance(val, str) and val.strip().lower() == "yes"
+#     for _, row in df.iterrows():
+#         # Decide whether this row is a simple 'Yes' formula
+#         val = row.get(MATCH_FORMULA_COL)
+#         is_yes = isinstance(val, str) and val.strip().lower() == "yes"
 
-        if not is_yes:
-            if isinstance(val, str) and val.strip().lower() == "unknown":
-                out.append("Unkown")
-            out.append("More complicated")
-            continue
+#         if not is_yes:
+#             if isinstance(val, str) and val.strip().lower() == "unknown":
+#                 out.append("Unkown")
+#             out.append("More complicated")
+#             continue
         
-        table_info = [row.get(c) for c in cols]
-        if CONVERT_MARGINAL_BOOL:
-            table_info = convert_marginal(table_info)
+#         table_info = [row.get(c) for c in cols]
+#         if CONVERT_MARGINAL_BOOL:
+#             table_info = convert_marginal(table_info)
         
-        # table_info = [float_to_str(x) if not pd.isna(x) else 'NA' for x in table_info]
-        # Format each cell: NA -> "NA", else float_to_str if numeric, else str(x)
-        formatted = []
-        for x in table_info:
-            if pd.isna(x):
-                formatted.append("NA")
-                continue
-            try:
-                formatted.append(float_to_str(float(x)))
-            except (TypeError, ValueError):
-                formatted.append(str(x))
+#         # table_info = [float_to_str(x) if not pd.isna(x) else 'NA' for x in table_info]
+#         # Format each cell: NA -> "NA", else float_to_str if numeric, else str(x)
+#         formatted = []
+#         for x in table_info:
+#             if pd.isna(x):
+#                 formatted.append("NA")
+#                 continue
+#             try:
+#                 formatted.append(float_to_str(float(x)))
+#             except (TypeError, ValueError):
+#                 formatted.append(str(x))
         
-        output = "match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3"
-        output += ("\n" + "------------------------------------------------------------------")
-        output += ("\n" + " | ".join(formatted))
+#         output = "match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3"
+#         output += ("\n" + "------------------------------------------------------------------")
+#         output += ("\n" + " | ".join(formatted))
 
-        out.append(output)
+#         out.append(output)
 
-    return out
+#     return out
 
-def generate_correct_matching_snippet_col(df: pd.DataFrame) -> List[str]:
-    """
-    Clean and UTF-8-sanitize the RAW_MATCHING_SNIPPET_COL column.
-    - Replaces NaN with ''
-    - Forces string dtype
-    - Encodes/decodes as UTF-8, replacing invalid bytes
-    - Returns a list of clean strings
-    """
-    out = (
-        df[RAW_MATCHING_SNIPPET_COL]
-        .fillna('No mention of employer matching.')
-        .astype(str)
-        .apply(lambda x: x.strip() or 'No mention of employer matching.')
-        .str.encode("latin1", errors="ignore")
-        .str.decode("utf-8", errors="ignore")
-        .tolist()
-    )
-    return out
+# def generate_correct_matching_snippet_col(df: pd.DataFrame) -> List[str]:
+#     """
+#     Clean and UTF-8-sanitize the RAW_MATCHING_SNIPPET_COL column.
+#     - Replaces NaN with ''
+#     - Forces string dtype
+#     - Encodes/decodes as UTF-8, replacing invalid bytes
+#     - Returns a list of clean strings
+#     """
+#     out = (
+#         df[RAW_MATCHING_SNIPPET_COL]
+#         .fillna('No mention of employer matching.')
+#         .astype(str)
+#         .apply(lambda x: x.strip() or 'No mention of employer matching.')
+#         .str.encode("latin1", errors="ignore")
+#         .str.decode("utf-8", errors="ignore")
+#         .tolist()
+#     )
+#     return out
 
 def load_ocr_data(path: Path=ALL_OCR_TEXT_DATA_PATH) -> pd.DataFrame:
     """
@@ -351,116 +351,116 @@ def save_oos_chunk_results(chunk_num: int, results: List[str], cfg: ModelRegistr
     return df
 
 
-def extract_entries_from_llm_table(table: str):
-    """
-    Extracts the entries from the bottom row of a Markdown-style table.
+# def extract_entries_from_llm_table(table: str):
+#     """
+#     Extracts the entries from the bottom row of a Markdown-style table.
 
-    Example input:
-        match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3
-        ------------------------------------------------------------------
-        0.5 | 0.06 | NA | NA | NA | NA
+#     Example input:
+#         match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3
+#         ------------------------------------------------------------------
+#         0.5 | 0.06 | NA | NA | NA | NA
 
-    Returns:
-        ['0.5', '0.06', 'NA', 'NA', 'NA', 'NA']
-    """
-    # Find the last line that contains at least one '|' and a non-dash character
-    lines = [line.strip() for line in table.strip().splitlines() if "|" in line]
-    if not lines:
-        return []
+#     Returns:
+#         ['0.5', '0.06', 'NA', 'NA', 'NA', 'NA']
+#     """
+#     # Find the last line that contains at least one '|' and a non-dash character
+#     lines = [line.strip() for line in table.strip().splitlines() if "|" in line]
+#     if not lines:
+#         return []
     
-    bottom_line = lines[-1]
+#     bottom_line = lines[-1]
 
-    # Extract values between | ... |, stripping extra spaces
-    matches = re.findall(r"\|\s*([^|]+?)\s*(?=\|)", f"|{bottom_line}|")
+#     # Extract values between | ... |, stripping extra spaces
+#     matches = re.findall(r"\|\s*([^|]+?)\s*(?=\|)", f"|{bottom_line}|")
 
-    return matches
+#     return matches
 
-def extract_and_clean_entries_from_llm_table(table: str):
-    return [float_to_str(x) for x in extract_entries_from_llm_table(table)]
+# def extract_and_clean_entries_from_llm_table(table: str):
+#     return [float_to_str(x) for x in extract_entries_from_llm_table(table)]
 
 
-def extract_headers_from_llm_table(table: str):
-    """
-    Extracts the entries from the top row of a Markdown-style table.
+# def extract_headers_from_llm_table(table: str):
+#     """
+#     Extracts the entries from the top row of a Markdown-style table.
 
-    Example input:
-        match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3
-        ------------------------------------------------------------------
-        0.5 | 0.06 | NA | NA | NA | NA
+#     Example input:
+#         match_rate_1 | cap_1 | match_rate_2 | cap_2 | match_rate_3 | cap_3
+#         ------------------------------------------------------------------
+#         0.5 | 0.06 | NA | NA | NA | NA
 
-    Returns:
-        ['match_rate_1', 'cap_1', 'match_rate_2', 'cap_2', 'match_rate_3', 'cap_3']
-    """
-    # Find the last line that contains at least one '|' and a non-dash character
-    lines = [line.strip() for line in table.strip().splitlines() if "|" in line]
-    if not lines:
-        return []
+#     Returns:
+#         ['match_rate_1', 'cap_1', 'match_rate_2', 'cap_2', 'match_rate_3', 'cap_3']
+#     """
+#     # Find the last line that contains at least one '|' and a non-dash character
+#     lines = [line.strip() for line in table.strip().splitlines() if "|" in line]
+#     if not lines:
+#         return []
     
-    top_line = lines[0]
+#     top_line = lines[0]
 
-    # Extract values between | ... |, stripping extra spaces
-    matches = re.findall(r"\|\s*([^|]+?)\s*(?=\|)", f"|{top_line}|")
+#     # Extract values between | ... |, stripping extra spaces
+#     matches = re.findall(r"\|\s*([^|]+?)\s*(?=\|)", f"|{top_line}|")
 
-    return matches
+#     return matches
 
-def check_more_complicated(table: str):
-    pattern = re.compile(r"\bcomplicated\b", re.IGNORECASE)
-    return bool(pattern.search(table))
+# def check_more_complicated(table: str):
+#     pattern = re.compile(r"\bcomplicated\b", re.IGNORECASE)
+#     return bool(pattern.search(table))
 
-def check_unknown(table: str):
-    pattern = re.compile(r"\bunknown\b", re.IGNORECASE)
-    return bool(pattern.search(table))
+# def check_unknown(table: str):
+#     pattern = re.compile(r"\bunknown\b", re.IGNORECASE)
+#     return bool(pattern.search(table))
 
-def check_same_table(t1: str, t2: str):
-    if check_more_complicated(t1) and check_more_complicated(t2):
-        return True
-    if check_unknown(t1) and check_unknown(t2):
-        return True
-    elif check_more_complicated(t1) or check_more_complicated(t2):
-        return False
+# def check_same_table(t1: str, t2: str):
+#     if check_more_complicated(t1) and check_more_complicated(t2):
+#         return True
+#     if check_unknown(t1) and check_unknown(t2):
+#         return True
+#     elif check_more_complicated(t1) or check_more_complicated(t2):
+#         return False
 
-    l1 = [float_to_str(x) for x in extract_entries_from_llm_table(t1)] or []
-    l2 = [float_to_str(x) for x in extract_entries_from_llm_table(t2)] or []
-    return l1 == l2
+#     l1 = [float_to_str(x) for x in extract_entries_from_llm_table(t1)] or []
+#     l2 = [float_to_str(x) for x in extract_entries_from_llm_table(t2)] or []
+#     return l1 == l2
 
-def get_boolean_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
-    df = pd.DataFrame({'llm': llm_output, 'ans': correct_col})
-    return df.apply(lambda row: check_same_table(row['llm'], row['ans']), axis=1).rename("is_correct")
+# def get_boolean_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
+#     df = pd.DataFrame({'llm': llm_output, 'ans': correct_col})
+#     return df.apply(lambda row: check_same_table(row['llm'], row['ans']), axis=1).rename("is_correct")
 
-# correct_col should only contain tables and More complicated
-def check_accuracy(llm_output: list, correct_col: [list | pd.Series]):
-    score = get_boolean_accuracy_col(llm_output, correct_col)
-    return score.mean()
+# # correct_col should only contain tables and More complicated
+# def check_accuracy(llm_output: list, correct_col: [list | pd.Series]):
+#     score = get_boolean_accuracy_col(llm_output, correct_col)
+#     return score.mean()
 
-def table_to_dict(table: str):
-    if check_more_complicated(table):
-        raise ValueError(f"Tried to make a dictionary from a non-table: {table}")
-    keys = extract_headers_from_llm_table(table)
-    vals = extract_and_clean_entries_from_llm_table(table)
-    return {k: v for k, v in zip(keys, vals)}
+# def table_to_dict(table: str):
+#     if check_more_complicated(table):
+#         raise ValueError(f"Tried to make a dictionary from a non-table: {table}")
+#     keys = extract_headers_from_llm_table(table)
+#     vals = extract_and_clean_entries_from_llm_table(table)
+#     return {k: v for k, v in zip(keys, vals)}
 
-def check_proper_table(table: str, correct_cols: List[str]):
-    if check_more_complicated(table):
-        return True
+# def check_proper_table(table: str, correct_cols: List[str]):
+#     if check_more_complicated(table):
+#         return True
     
-    cols = extract_headers_from_llm_table(table)
+#     cols = extract_headers_from_llm_table(table)
 
-    for x in cols:
-        if x not in correct_cols:
-            return False
+#     for x in cols:
+#         if x not in correct_cols:
+#             return False
     
-    return True
+#     return True
 
-def glob_oos_results(model_name: str, base_dir: Path):
-    res = (base_dir / model_name).glob("*.csv")
+def glob_oos_results(result_dir: Path):
+    res = result_dir.glob("*.csv")
     out = list(res)
     # print(out)
     return out#[:3]
 
-def get_full_results_df(model_name: str, result_col: str, base_dir: Path=OOS_RESULTS_DIR):
+def get_full_results_df(model_name: str, result_col: str, result_dir: Path):
     col = result_col
 
-    df_list = [pd.read_csv(x, usecols=['ack_id', 'year', col]) for x in glob_oos_results(model_name, base_dir)]
+    df_list = [pd.read_csv(x, usecols=['ack_id', 'year', col]) for x in glob_oos_results(result_dir)]
     # df_list = [pd.read_csv(x) for x in glob_oos_results(model_name)]
     res = pd.concat(df_list, ignore_index=True)
     res["ack_id"] = res["ack_id"].astype(str).str.strip()
@@ -481,251 +481,252 @@ def inner_join_on_ack_id(df_list):
     return reduce(lambda l, r: pd.merge(l, r, on='ack_id', how='inner'), df_list)
 
 # TODO: make use ModelsRegistry instead
-def create_snippets_df(models: List[str]=['g1', 'g2']) -> pd.Series:
+def create_snippets_df(model_names: List[str]=['g1', 'g2']) -> pd.Series:
     dfs = []
     cols = []
-    for model in models:
-        col = f'{model}_snippet'
+    for model_name in model_names:
+        cfg = REGISTRY.get(model_name)
+        col = cfg['result_col']
         cols.append(col)
-        dfs.append(get_full_results_df(model, col, OOS_DATA_WITH_SNIPPETS_DIR).drop(columns="year", errors="ignore"))
+        dfs.append(get_full_results_df(model_name, col, cfg['oos_results_dir']).drop(columns="year", errors="ignore"))
     
     # df = pd.concat(dfs, ignore_index=True).drop(columns="year", errors="ignore")
     df = inner_join_on_ack_id(dfs)
     print(df)
     return df
 
-def create_no_mention_of_matching_flag(df, snippet_cols):
-    snippets = df[snippet_cols].apply(lambda col: col.str.strip())
-    eq_series = (snippets.nunique(axis=1) == 1) & (snippets.iloc[:, 0].astype(str).str.strip() == "No mention of employer matching.")
-    return eq_series
+# def create_no_mention_of_matching_flag(df, snippet_cols):
+#     snippets = df[snippet_cols].apply(lambda col: col.str.strip())
+#     eq_series = (snippets.nunique(axis=1) == 1) & (snippets.iloc[:, 0].astype(str).str.strip() == "No mention of employer matching.")
+#     return eq_series
 
-# ----- autoenrollment -----
-def group_not_simple_ae(ae_flag: str):
-    try:
-        s = ae_flag.strip()
-        if (s == 'Yes') or (s == 'Unknown'):
-            return s
-        return "More complicated"
-    except:
-        return "Unknown"
+# # ----- autoenrollment -----
+# def group_not_simple_ae(ae_flag: str):
+#     try:
+#         s = ae_flag.strip()
+#         if (s == 'Yes') or (s == 'Unknown'):
+#             return s
+#         return "More complicated"
+#     except:
+#         return "Unknown"
 
-def generate_correct_autoenrollment_table(df: pd.DataFrame) -> List[str]:
-    cols = [AE_OFFERED_COL, AE_INIT_DEF_COL, AE_AINC_OFFERED_COL, AE_AINC_AMT_COL, AE_AINC_CAP_COL]
-    out: List[str] = []
+# def generate_correct_autoenrollment_table(df: pd.DataFrame) -> List[str]:
+#     cols = [AE_OFFERED_COL, AE_INIT_DEF_COL, AE_AINC_OFFERED_COL, AE_AINC_AMT_COL, AE_AINC_CAP_COL]
+#     out: List[str] = []
 
-    for _, row in df.iterrows():
-        # Decide whether this row is a simple 'Yes' formula
-        ae_offered = group_not_simple_ae(row.get(AE_OFFERED_COL))
-        ainc_offered = group_not_simple_ae(row.get(AE_AINC_OFFERED_COL))
+#     for _, row in df.iterrows():
+#         # Decide whether this row is a simple 'Yes' formula
+#         ae_offered = group_not_simple_ae(row.get(AE_OFFERED_COL))
+#         ainc_offered = group_not_simple_ae(row.get(AE_AINC_OFFERED_COL))
 
-        # is_complicated = isinstance(val, str) and val.strip().lower() == "more complicated"
+#         # is_complicated = isinstance(val, str) and val.strip().lower() == "more complicated"
 
-        # if is_complicated:
-        #     out.append("More complicated")
-        #     continue
+#         # if is_complicated:
+#         #     out.append("More complicated")
+#         #     continue
         
-        table_info = [row.get(c) for c in cols]
-        table_info[0] = ae_offered
-        table_info[2] = ainc_offered
+#         table_info = [row.get(c) for c in cols]
+#         table_info[0] = ae_offered
+#         table_info[2] = ainc_offered
 
-        # table_info = [float_to_str(x) if not pd.isna(x) else 'NA' for x in table_info]
-        # Format each cell: NA -> "NA", else float_to_str if numeric, else str(x)
-        formatted = []
-        for x in table_info:
-            if pd.isna(x):
-                formatted.append("NA")
-                continue
-            try:
-                formatted.append(float_to_str(float(x)))
-            except (TypeError, ValueError):
-                formatted.append(str(x))
+#         # table_info = [float_to_str(x) if not pd.isna(x) else 'NA' for x in table_info]
+#         # Format each cell: NA -> "NA", else float_to_str if numeric, else str(x)
+#         formatted = []
+#         for x in table_info:
+#             if pd.isna(x):
+#                 formatted.append("NA")
+#                 continue
+#             try:
+#                 formatted.append(float_to_str(float(x)))
+#             except (TypeError, ValueError):
+#                 formatted.append(str(x))
         
-        output = "auto_enrollment_offered | initial_deferral | auto_increase_offered | auto_increase_amount | auto_increase_cap"
-        output += ("\n" + "----------------------------------------------------------------------------------------------------------------------------------")
-        output += ("\n" + " | ".join(formatted))
+#         output = "auto_enrollment_offered | initial_deferral | auto_increase_offered | auto_increase_amount | auto_increase_cap"
+#         output += ("\n" + "----------------------------------------------------------------------------------------------------------------------------------")
+#         output += ("\n" + " | ".join(formatted))
 
-        out.append(output)
+#         out.append(output)
 
-    return out
+#     return out
 
-def generate_correct_autoenrollment_snippet_col(df: pd.DataFrame) -> List[str]:
-    """
-    Clean and UTF-8-sanitize the RAW_MATCHING_SNIPPET_COL column.
-    - Replaces NaN with ''
-    - Forces string dtype
-    - Encodes/decodes as UTF-8, replacing invalid bytes
-    - Returns a list of clean strings
-    """
-    out = (
-        df[RAW_AE_SNIPPET_COL]
-        .fillna('No mention of auto-enrollment.')
-        .astype(str)
-        .apply(lambda x: x.strip() or 'No mention of auto-enrollment.')
-        .str.encode("latin1", errors="ignore")
-        .str.decode("utf-8", errors="ignore")
-        .tolist()
-    )
-    return out
+# def generate_correct_autoenrollment_snippet_col(df: pd.DataFrame) -> List[str]:
+#     """
+#     Clean and UTF-8-sanitize the RAW_MATCHING_SNIPPET_COL column.
+#     - Replaces NaN with ''
+#     - Forces string dtype
+#     - Encodes/decodes as UTF-8, replacing invalid bytes
+#     - Returns a list of clean strings
+#     """
+#     out = (
+#         df[RAW_AE_SNIPPET_COL]
+#         .fillna('No mention of auto-enrollment.')
+#         .astype(str)
+#         .apply(lambda x: x.strip() or 'No mention of auto-enrollment.')
+#         .str.encode("latin1", errors="ignore")
+#         .str.decode("utf-8", errors="ignore")
+#         .tolist()
+#     )
+#     return out
 
-def is_numeric(x) -> bool:
-    return not pd.isna(pd.to_numeric(x, errors="coerce"))
+# def is_numeric(x) -> bool:
+#     return not pd.isna(pd.to_numeric(x, errors="coerce"))
 
-def get_cols_and_values_from_autoenrollment_table(table: str):
-    cols = extract_headers_from_llm_table(table)
-    vals = [str(x).strip() for x in extract_entries_from_llm_table(table)]
+# def get_cols_and_values_from_autoenrollment_table(table: str):
+#     cols = extract_headers_from_llm_table(table)
+#     vals = [str(x).strip() for x in extract_entries_from_llm_table(table)]
 
-    clean_vals = [float_to_str(v) if is_numeric(v) else str(v).strip() for v in vals]
+#     clean_vals = [float_to_str(v) if is_numeric(v) else str(v).strip() for v in vals]
 
-    return cols, clean_vals
+#     return cols, clean_vals
 
 
-def check_proper_autoenrollment_table(table: str, correct_cols: List[str]):
-    cols, vals = get_cols_and_values_from_autoenrollment_table(table)
+# def check_proper_autoenrollment_table(table: str, correct_cols: List[str]):
+#     cols, vals = get_cols_and_values_from_autoenrollment_table(table)
 
-    if len(cols) != len(vals):
-        return False
+#     if len(cols) != len(vals):
+#         return False
     
-    if len(cols) != len(correct_cols):
-        return False
+#     if len(cols) != len(correct_cols):
+#         return False
 
-    for x in cols:
-        if x not in correct_cols:
-            return False
+#     for x in cols:
+#         if x not in correct_cols:
+#             return False
     
-    return True
+#     return True
 
-def check_same_autoenrollment_table(t1: str, t2: str):
-    _, l1 = get_cols_and_values_from_autoenrollment_table(t1)
-    _, l2 = get_cols_and_values_from_autoenrollment_table(t2)
-    return l1 == l2
+# def check_same_autoenrollment_table(t1: str, t2: str):
+#     _, l1 = get_cols_and_values_from_autoenrollment_table(t1)
+#     _, l2 = get_cols_and_values_from_autoenrollment_table(t2)
+#     return l1 == l2
 
-def get_boolean_autoenrollment_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
-    df = pd.DataFrame({'llm': llm_output, 'ans': correct_col})
-    return df.apply(lambda row: check_same_autoenrollment_table(row['llm'], row['ans']), axis=1).rename("is_correct")
+# def get_boolean_autoenrollment_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
+#     df = pd.DataFrame({'llm': llm_output, 'ans': correct_col})
+#     return df.apply(lambda row: check_same_autoenrollment_table(row['llm'], row['ans']), axis=1).rename("is_correct")
 
-def check_autoenrollment_accuracy(llm_output: list, correct_col: [list | pd.Series]):
-    score = get_boolean_autoenrollment_accuracy_col(llm_output, correct_col)
-    return score.mean()
+# def check_autoenrollment_accuracy(llm_output: list, correct_col: [list | pd.Series]):
+#     score = get_boolean_autoenrollment_accuracy_col(llm_output, correct_col)
+#     return score.mean()
 
-def autoenrollment_table_to_dict(table: str):
-    keys, vals = get_cols_and_values_from_autoenrollment_table(table)
-    return {k: v for k, v in zip(keys, vals)}
+# def autoenrollment_table_to_dict(table: str):
+#     keys, vals = get_cols_and_values_from_autoenrollment_table(table)
+#     return {k: v for k, v in zip(keys, vals)}
 
-def create_no_mention_of_autoenrollment_flag(df, snippet_cols):
-    snippets = df[snippet_cols].apply(lambda col: col.str.strip())
-    eq_series = (snippets.nunique(axis=1) == 1) & (snippets.iloc[:, 0].astype(str).str.strip() == "No mention of auto-enrollment.")
-    return eq_series
+# def create_no_mention_of_autoenrollment_flag(df, snippet_cols):
+#     snippets = df[snippet_cols].apply(lambda col: col.str.strip())
+#     eq_series = (snippets.nunique(axis=1) == 1) & (snippets.iloc[:, 0].astype(str).str.strip() == "No mention of auto-enrollment.")
+#     return eq_series
 
-# ----- vesting -----
-def group_not_simple_vesting(vesting_flag: str):
-    try:
-        s = str(vesting_flag).strip()
-        if (s == 'Yes') or (s == 'Unknown'):
-            return s
-        return "More complicated"
-    except:
-        return "Unknown"
+# # ----- vesting -----
+# def group_not_simple_vesting(vesting_flag: str):
+#     try:
+#         s = str(vesting_flag).strip()
+#         if (s == 'Yes') or (s == 'Unknown'):
+#             return s
+#         return "More complicated"
+#     except:
+#         return "Unknown"
 
-def generate_correct_vesting_table(df: pd.DataFrame) -> List[str]:
-    vesting_years_list = [VESTING_YEAR_COL_STEM+f'{i}' for i in range(NUM_VESTING_YEARS)]
-    cols = [VESTING_OFFERED_COL] + vesting_years_list
-    out: List[str] = []
+# def generate_correct_vesting_table(df: pd.DataFrame) -> List[str]:
+#     vesting_years_list = [VESTING_YEAR_COL_STEM+f'{i}' for i in range(NUM_VESTING_YEARS)]
+#     cols = [VESTING_OFFERED_COL] + vesting_years_list
+#     out: List[str] = []
 
-    for _, row in df.iterrows():
-        # Decide whether this row is a simple 'Yes' formula
-        vesting_offered = group_not_simple_vesting(row.get(VESTING_OFFERED_COL))
+#     for _, row in df.iterrows():
+#         # Decide whether this row is a simple 'Yes' formula
+#         vesting_offered = group_not_simple_vesting(row.get(VESTING_OFFERED_COL))
 
-        # is_complicated = isinstance(val, str) and val.strip().lower() == "more complicated"
+#         # is_complicated = isinstance(val, str) and val.strip().lower() == "more complicated"
 
-        # if is_complicated:
-        #     out.append("More complicated")
-        #     continue
+#         # if is_complicated:
+#         #     out.append("More complicated")
+#         #     continue
         
-        table_info = [row.get(c) for c in cols]
-        table_info[0] = vesting_offered
+#         table_info = [row.get(c) for c in cols]
+#         table_info[0] = vesting_offered
 
-        # table_info = [float_to_str(x) if not pd.isna(x) else 'NA' for x in table_info]
-        # Format each cell: NA -> "NA", else float_to_str if numeric, else str(x)
-        formatted = []
-        for x in table_info:
-            if pd.isna(x):
-                formatted.append("NA")
-                continue
-            try:
-                formatted.append(float_to_str(float(x)))
-            except (TypeError, ValueError):
-                formatted.append(str(x))
+#         # table_info = [float_to_str(x) if not pd.isna(x) else 'NA' for x in table_info]
+#         # Format each cell: NA -> "NA", else float_to_str if numeric, else str(x)
+#         formatted = []
+#         for x in table_info:
+#             if pd.isna(x):
+#                 formatted.append("NA")
+#                 continue
+#             try:
+#                 formatted.append(float_to_str(float(x)))
+#             except (TypeError, ValueError):
+#                 formatted.append(str(x))
         
-        output = 'vesting_offered | ' +' | '.join(vesting_years_list)
-        output += ("\n" + "-"*len(output))
-        output += ("\n" + " | ".join(formatted))
+#         output = 'vesting_offered | ' +' | '.join(vesting_years_list)
+#         output += ("\n" + "-"*len(output))
+#         output += ("\n" + " | ".join(formatted))
 
-        out.append(output)
+#         out.append(output)
 
-    return out
+#     return out
 
-def generate_correct_vesting_snippet_col(df: pd.DataFrame) -> List[str]:
-    """
-    Clean and UTF-8-sanitize the RAW_VESTING_SNIPPET_COL column.
-    - Replaces NaN with ''
-    - Forces string dtype
-    - Encodes/decodes as UTF-8, replacing invalid bytes
-    - Returns a list of clean strings
-    """
-    out = (
-        df[RAW_VESTING_SNIPPET_COL]
-        .fillna('No mention of vesting.')
-        .astype(str)
-        .apply(lambda x: x.strip() or 'No mention of vesting.')
-        .str.encode("latin1", errors="ignore")
-        .str.decode("utf-8", errors="ignore")
-        .tolist()
-    )
-    return out
-
-
-def get_cols_and_values_from_vesting_table(table: str):
-    cols = extract_headers_from_llm_table(table)
-    vals = [str(x).strip() for x in extract_entries_from_llm_table(table)]
-
-    clean_vals = [float_to_str(v) if is_numeric(v) else str(v).strip() for v in vals]
-
-    return cols, clean_vals
+# def generate_correct_vesting_snippet_col(df: pd.DataFrame) -> List[str]:
+#     """
+#     Clean and UTF-8-sanitize the RAW_VESTING_SNIPPET_COL column.
+#     - Replaces NaN with ''
+#     - Forces string dtype
+#     - Encodes/decodes as UTF-8, replacing invalid bytes
+#     - Returns a list of clean strings
+#     """
+#     out = (
+#         df[RAW_VESTING_SNIPPET_COL]
+#         .fillna('No mention of vesting.')
+#         .astype(str)
+#         .apply(lambda x: x.strip() or 'No mention of vesting.')
+#         .str.encode("latin1", errors="ignore")
+#         .str.decode("utf-8", errors="ignore")
+#         .tolist()
+#     )
+#     return out
 
 
-def check_proper_vesting_table(table: str, correct_cols: List[str]):
-    cols, vals = get_cols_and_values_from_vesting_table(table)
+# def get_cols_and_values_from_vesting_table(table: str):
+#     cols = extract_headers_from_llm_table(table)
+#     vals = [str(x).strip() for x in extract_entries_from_llm_table(table)]
 
-    if len(cols) != len(vals):
-        return False
+#     clean_vals = [float_to_str(v) if is_numeric(v) else str(v).strip() for v in vals]
+
+#     return cols, clean_vals
+
+
+# def check_proper_vesting_table(table: str, correct_cols: List[str]):
+#     cols, vals = get_cols_and_values_from_vesting_table(table)
+
+#     if len(cols) != len(vals):
+#         return False
     
-    if len(cols) != len(correct_cols):
-        return False
+#     if len(cols) != len(correct_cols):
+#         return False
 
-    for x in cols:
-        if x not in correct_cols:
-            return False
+#     for x in cols:
+#         if x not in correct_cols:
+#             return False
     
-    return True
+#     return True
 
-def check_same_vesting_table(t1: str, t2: str):
-    _, l1 = get_cols_and_values_from_vesting_table(t1)
-    _, l2 = get_cols_and_values_from_vesting_table(t2)
-    return l1 == l2
+# def check_same_vesting_table(t1: str, t2: str):
+#     _, l1 = get_cols_and_values_from_vesting_table(t1)
+#     _, l2 = get_cols_and_values_from_vesting_table(t2)
+#     return l1 == l2
 
-def get_boolean_vesting_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
-    df = pd.DataFrame({'llm': llm_output, 'ans': correct_col})
-    return df.apply(lambda row: check_same_vesting_table(row['llm'], row['ans']), axis=1).rename("is_correct")
+# def get_boolean_vesting_accuracy_col(llm_output: list, correct_col: [list | pd.Series]):
+#     df = pd.DataFrame({'llm': llm_output, 'ans': correct_col})
+#     return df.apply(lambda row: check_same_vesting_table(row['llm'], row['ans']), axis=1).rename("is_correct")
 
-def check_vesting_accuracy(llm_output: list, correct_col: [list | pd.Series]):
-    score = get_boolean_vesting_accuracy_col(llm_output, correct_col)
-    return score.mean()
+# def check_vesting_accuracy(llm_output: list, correct_col: [list | pd.Series]):
+#     score = get_boolean_vesting_accuracy_col(llm_output, correct_col)
+#     return score.mean()
 
-def vesting_table_to_dict(table: str):
-    keys, vals = get_cols_and_values_from_vesting_table(table)
-    return {k: v for k, v in zip(keys, vals)}
+# def vesting_table_to_dict(table: str):
+#     keys, vals = get_cols_and_values_from_vesting_table(table)
+#     return {k: v for k, v in zip(keys, vals)}
 
-def create_no_mention_of_vesting_flag(df, snippet_cols):
-    snippets = df[snippet_cols].apply(lambda col: col.str.strip())
-    eq_series = (snippets.nunique(axis=1) == 1) & (snippets.iloc[:, 0].astype(str).str.strip() == "No mention of vesting.")
-    return eq_series
+# def create_no_mention_of_vesting_flag(df, snippet_cols):
+#     snippets = df[snippet_cols].apply(lambda col: col.str.strip())
+#     eq_series = (snippets.nunique(axis=1) == 1) & (snippets.iloc[:, 0].astype(str).str.strip() == "No mention of vesting.")
+#     return eq_series
