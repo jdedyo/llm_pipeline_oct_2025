@@ -4,7 +4,7 @@ from peft import LoraConfig
 from transformers import TrainingArguments
 from models_registry import ModelRegistry
 from copy import deepcopy
-
+import warnings
 # ----- administrative -----
 DEBUG = False
 
@@ -112,7 +112,7 @@ try:
     SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_TRAINING_ARGS)
     SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_SNIPPET_TRAIN_EPOCHS
 except:
-    print("WARNING: Setting matching training arguments to None since an error was detected (often no GPU)...")
+    warnings.warn("Setting matching training arguments to None since an error was detected (often no GPU)...", stacklevel=2)
     DEFAULT_TRAINING_ARGS = None
     TABULATOR_TRAINING_ARGS = None
     SNIPPET_TRAINING_ARGS = None
@@ -321,7 +321,7 @@ try:
     AE_SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_AE_TRAINING_ARGS)
     AE_SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_AE_SNIPPET_TRAIN_EPOCHS
 except:
-    print("WARNING: Setting autoenrollment training arguments to None since an error was detected (often no GPU)...")
+    warnings.warn("Setting autoenrollment training arguments to None since an error was detected (often no GPU)...", stacklevel=2)
     DEFAULT_AE_TRAINING_ARGS = None
     AE_TABULATOR_TRAINING_ARGS = None
     AE_SNIPPET_TRAINING_ARGS = None
@@ -482,7 +482,7 @@ try:
     VESTING_SNIPPET_TRAINING_ARGS = deepcopy(DEFAULT_VESTING_TRAINING_ARGS)
     VESTING_SNIPPET_TRAINING_ARGS.num_train_epochs = NUM_VESTING_SNIPPET_TRAIN_EPOCHS
 except:
-    print("WARNING: Setting vesting training arguments to None since an error was detected (often no GPU)...")
+    warnings.warn("Setting vesting training arguments to None since an error was detected (often no GPU)...", stacklevel=2)
     DEFAULT_VESTING_TRAINING_ARGS = None
     VESTING_TABULATOR_TRAINING_ARGS = None
     VESTING_SNIPPET_TRAINING_ARGS = None
